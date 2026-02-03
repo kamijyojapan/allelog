@@ -151,7 +151,6 @@ window.app = {
         this.closeModals();
         this.closeMedManager();
         if(state.isMenuOpen) this.toggleMenu();
-        if(state.isDoctorMode) this.toggleDoctorMode();
         
         state.currentDate = new Date();
         state.selectedDate = new Date();
@@ -182,14 +181,13 @@ window.app = {
                     DB.put('settings', { key: 'doctor_notice_shown', value: true });
                 }
             };
-            
-            // カレンダー画面に遷移
-            this.goHome();
         } else {
             btn.classList.remove('active');
-            this.renderCalendar();
-            this.renderTimeline();
         }
+        
+        // カレンダーとタイムラインを再描画
+        this.renderCalendar();
+        this.renderTimeline();
     },
 
     // --- Calendar ---
