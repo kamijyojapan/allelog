@@ -447,13 +447,17 @@ window.app = {
     async saveMeal() {
         const id = document.getElementById('edit-id').value;
         const ts = this.getTimestampFromInput();
+        const originalId = id ? Number(id) : null;
+        const hasDateChange = !!originalId && originalId !== ts;
         const note = document.getElementById('meal-note').value;
         const tags = Array.from(document.querySelectorAll('#meal-tags-container input:checked')).map(c=>c.value);
         
         let photo = state.tempPhoto; 
         if(!photo && id && state.editingLog) photo = state.editingLog.photo;
 
-        await DB.put('meals', { id: id?Number(id):ts, type:'meal', photo, tags, note });
+        const recordId = (!originalId || hasDateChange) ? ts : originalId;
+        await DB.put('meals', { id: recordId, type:'meal', photo, tags, note });
+        if (hasDateChange) await DB.delete('meals', originalId);
         this.closeInputOverlay();
         this.reloadAll();
     },
@@ -461,6 +465,8 @@ window.app = {
     async saveMed() {
         const id = document.getElementById('edit-id').value;
         const ts = this.getTimestampFromInput();
+        const originalId = id ? Number(id) : null;
+        const hasDateChange = !!originalId && originalId !== ts;
         const rows = document.querySelectorAll('.med-row');
         const items = [];
         rows.forEach(row => {
@@ -473,7 +479,9 @@ window.app = {
 
         if(items.length===0) return alert('薬を選択してください');
         
-        await DB.put('meds', { id: id?Number(id):ts, type:'med', items });
+        const recordId = (!originalId || hasDateChange) ? ts : originalId;
+        await DB.put('meds', { id: recordId, type:'med', items });
+        if (hasDateChange) await DB.delete('meds', originalId);
         this.closeInputOverlay();
         this.reloadAll();
     },
@@ -481,6 +489,8 @@ window.app = {
     async saveSymptom() {
         const id = document.getElementById('edit-id').value;
         const ts = this.getTimestampFromInput();
+        const originalId = id ? Number(id) : null;
+        const hasDateChange = !!originalId && originalId !== ts;
 
         if(!id && !confirm('過去1週間の食事と服薬の履歴も保存します。よろしいですか？')) return;
 
@@ -491,28 +501,21 @@ window.app = {
         let photo = state.tempPhoto;
         if(!photo && id && state.editingLog) photo = state.editingLog.photo;
 
-        // 再計算条件:
-        // - 新規作成 (no id)
-        // - 既存だが編集前の snapshot が存在しない
-        // - 既存だが入力された日付(ts)が元の log.id と異なる（日付を変更した）
-        let snapshot = null;
-        const originalId = id && state.editingLog ? Number(state.editingLog.id) : null;
-        const inputTs = ts;
-        const needsRecalc = !id || !state.editingLog || !state.editingLog.snapshot || (originalId !== inputTs);
-        if(!needsRecalc) {
-            snapshot = state.editingLog.snapshot;
-        } else {
-            const weekAgo = inputTs - (7 * 24 * 60 * 60 * 1000);
+        let snapshot = (id && state.editingLog && !hasDateChange) ? state.editingLog.snapshot : null;
+        if(!snapshot) {
+            const weekAgo = ts - (7 * 24 * 60 * 60 * 1000);
             const [pastMeals, pastMeds] = await Promise.all([
-                DB.getRange('meals', weekAgo, inputTs), DB.getRange('meds', weekAgo, inputTs)
+                DB.getRange('meals', weekAgo, ts), DB.getRange('meds', weekAgo, ts)
             ]);
             snapshot = { meals: pastMeals, meds: pastMeds };
         }
 
+        const recordId = (!originalId || hasDateChange) ? ts : originalId;
         await DB.put('symptoms', {
-            id: id?Number(id):ts, type:'symptom',
+            id: recordId, type:'symptom',
             severity, parts, note, photo, snapshot
         });
+        if (hasDateChange) await DB.delete('symptoms', originalId);
         this.closeInputOverlay();
         this.reloadAll();
     },
