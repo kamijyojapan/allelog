@@ -1,10 +1,11 @@
-const CACHE_NAME = 'allergy-log-v7';
+const CACHE_NAME = 'allergy-log-v8';
 const ASSETS = [
     './',
     './index.html',
     './style.css',
     './app.js',
     './manifest.json',
+    './favicon.ico',
     './icon-192.png',
     './icon-512.png'
 ];
