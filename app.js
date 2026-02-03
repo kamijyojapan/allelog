@@ -132,6 +132,9 @@ window.app = {
         this.setupPhotoInput('meal-file', 'meal-preview', 'meal-preview-area');
         this.setupPhotoInput('sym-cam', 'symptom-preview', 'symptom-preview-area');
         this.setupPhotoInput('sym-file', 'symptom-preview', 'symptom-preview-area');
+        
+        // 初期状態でホームをアクティブに
+        this.setActiveNav('home');
     },
 
     async reloadAll() {
