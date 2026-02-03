@@ -113,6 +113,11 @@ window.app = {
         // Menu Items
         document.getElementById('menu-data').onclick = () => { this.toggleMenu(); document.getElementById('view-settings').classList.remove('hidden'); };
         document.getElementById('menu-med-reg').onclick = () => { this.toggleMenu(); this.openMedManager(); };
+        document.getElementById('menu-settings').onclick = () => { 
+            this.toggleMenu(); 
+            document.getElementById('view-settings-menu').classList.remove('hidden'); 
+        };
+        document.getElementById('menu-refresh').onclick = () => { this.toggleMenu(); this.forceRefresh(); };
         document.getElementById('menu-about').onclick = () => { 
             this.toggleMenu(); 
             document.getElementById('view-about').classList.remove('hidden'); 
@@ -149,6 +154,7 @@ window.app = {
         state.selectedDate = new Date();
         this.renderCalendar();
         this.renderTimeline();
+        this.setActiveNav('home');
         window.scrollTo({ top: 0, behavior: 'smooth' });
     },
 
@@ -158,17 +164,29 @@ window.app = {
         document.getElementById('menu-backdrop').classList.toggle('open', state.isMenuOpen);
     },
 
-    toggleDoctorMode() {
+    async toggleDoctorMode() {
         state.isDoctorMode = !state.isDoctorMode;
         const btn = document.getElementById('btn-doctor');
         if(state.isDoctorMode) {
             btn.classList.add('active');
-            alert('【ドクターモード】\nカレンダー：数字は最大重症度\nタイムライン：症状のみ表示');
+            
+            // 初回のみ注意表示
+            const db = await DB.open();
+            const req = db.transaction('settings').objectStore('settings').get('doctor_notice_shown');
+            req.onsuccess = () => {
+                if(!req.result || !req.result.value) {
+                    alert('【ドクターモード】\nカレンダー：数字は最大重症度\nタイムライン：症状のみ表示');
+                    DB.put('settings', { key: 'doctor_notice_shown', value: true });
+                }
+            };
+            
+            // カレンダー画面に遷移
+            this.goHome();
         } else {
             btn.classList.remove('active');
+            this.renderCalendar();
+            this.renderTimeline();
         }
-        this.renderCalendar();
-        this.renderTimeline();
     },
 
     // --- Calendar ---
@@ -344,11 +362,15 @@ window.app = {
 
         if(isEdit) this.fillForm(type, data);
         if(type === 'med') await this.renderMedList(data ? data.items : null);
+        
+        // 下部メニューのactive状態
+        this.setActiveNav(type);
     },
     
     closeInputOverlay() {
         document.getElementById('input-overlay').classList.add('hidden');
         state.editingLog = null;
+        this.setActiveNav('home');
     },
 
     renderMealTags(selectedTags = []) {
@@ -544,8 +566,9 @@ window.app = {
     closeModals() {
         document.getElementById('view-detail').classList.add('hidden');
         document.getElementById('view-settings').classList.add('hidden');
+        document.getElementById('view-settings-menu').classList.add('hidden');
         document.getElementById('view-med-manager').classList.add('hidden');
-        document.getElementById('view-about').classList.add('hidden'); // ←これを追加
+        document.getElementById('view-about').classList.add('hidden');
     },
     resetForms() {
         document.querySelectorAll('input[type=text], textarea').forEach(e=>e.value='');
@@ -610,6 +633,28 @@ window.app = {
             } catch(err) { console.error(err); alert('不正なファイルです'); }
         };
         reader.readAsText(input.files[0]);
+    },
+    // 強制更新
+    async forceRefresh() {
+        if('serviceWorker' in navigator) {
+            const registration = await navigator.serviceWorker.getRegistration();
+            if(registration) {
+                await registration.update();
+            }
+        }
+        location.reload(true);
+    },
+    // ドクター注意をリセット
+    async resetDoctorNotice() {
+        await DB.put('settings', { key: 'doctor_notice_shown', value: false });
+        alert('次回ドクターモード起動時に説明が表示されます');
+        this.closeModals();
+    },
+    // 下部メニューのactive状態を設定
+    setActiveNav(nav) {
+        document.querySelectorAll('.bottom-nav button').forEach(b => b.classList.remove('active'));
+        const el = document.getElementById(`nav-${nav}`);
+        if(el) el.classList.add('active');
     },
     isSameDay(d1, d2) {
         return d1.getFullYear()===d2.getFullYear() && d1.getMonth()===d2.getMonth() && d1.getDate()===d2.getDate();

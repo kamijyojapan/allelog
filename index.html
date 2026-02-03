@@ -29,6 +29,8 @@
     <ul class="menu-list">
         <li id="menu-data"><span class="menu-icon">📦</span>データ移行</li>
         <li id="menu-med-reg"><span class="menu-icon">💊</span>薬剤登録</li>
+        <li id="menu-settings"><span class="menu-icon">⚙️</span>設定</li>
+        <li id="menu-refresh"><span class="menu-icon">🔄</span>更新</li>
         <li id="menu-about"><span class="menu-icon">ℹ️</span>アレログについて</li>
         <li id="menu-exit" style="color:var(--danger);"><span class="menu-icon">🚪</span>終了</li>
     </ul>
@@ -53,7 +55,7 @@
     </section>
 </main>
 
-<div id="view-detail" class="modal-backdrop hidden">
+<div id="view-detail" class="modal-backdrop hidden" onclick="if(event.target===this) app.closeModals()">
     <div class="modal-window">
         <div class="modal-header">
             <span>詳細</span>
@@ -67,7 +69,7 @@
     </div>
 </div>
 
-<div id="view-settings" class="modal-backdrop hidden">
+<div id="view-settings" class="modal-backdrop hidden" onclick="if(event.target===this) app.closeModals()">
     <div class="modal-window">
         <div class="modal-header">
             <span>📦 データ移行</span>
@@ -84,7 +86,7 @@
     </div>
 </div>
 
-<div id="view-med-manager" class="modal-backdrop hidden">
+<div id="view-med-manager" class="modal-backdrop hidden" onclick="if(event.target===this) app.closeMedManager()">
     <div class="modal-window">
         <div class="modal-header">
             <span>💊 薬剤登録・編集</span>
@@ -99,7 +101,21 @@
     </div>
 </div>
 
-<div id="view-about" class="modal-backdrop hidden">
+<div id="view-settings-menu" class="modal-backdrop hidden" onclick="if(event.target===this) app.closeModals()">
+    <div class="modal-window">
+        <div class="modal-header">
+            <span>⚙️ 設定</span>
+            <button onclick="app.closeModals()" style="background:none;border:none;font-size:1.5rem;">×</button>
+        </div>
+        <div style="padding: 10px 0;">
+            <button onclick="app.resetDoctorNotice()" class="btn-outline" style="width:100%; text-align:left; padding: 15px;">
+                <span style="margin-right: 10px;">🏥</span>ドクターモード説明を再表示
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="view-about" class="modal-backdrop hidden" onclick="if(event.target===this) app.closeModals()">
     <div class="modal-window">
         <div class="modal-header">
             <span>ℹ️ アレログについて</span>
@@ -195,10 +211,10 @@
 </div>
 
 <nav class="bottom-nav">
-    <button onclick="app.goHome()"><span style="font-size:1.2rem">🏠</span>ホーム</button>
-    <button onclick="app.openForm('meal')"><span style="font-size:1.2rem">🍽️</span>食事</button>
-    <button onclick="app.openForm('med')"><span style="font-size:1.2rem">💊</span>服薬</button>
-    <button onclick="app.openForm('symptom')" class="text-danger"><span style="font-size:1.2rem">⚠️</span>症状</button>
+    <button id="nav-home" onclick="app.goHome()"><span style="font-size:1.2rem">🏠</span>ホーム</button>
+    <button id="nav-meal" onclick="app.openForm('meal')"><span style="font-size:1.2rem">🍽️</span>食事</button>
+    <button id="nav-med" onclick="app.openForm('med')"><span style="font-size:1.2rem">💊</span>服薬</button>
+    <button id="nav-symptom" onclick="app.openForm('symptom')" class="text-danger"><span style="font-size:1.2rem">⚠️</span>症状</button>
 </nav>
 
 <script src="app.js"></script>
