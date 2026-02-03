@@ -491,11 +491,20 @@ window.app = {
         let photo = state.tempPhoto;
         if(!photo && id && state.editingLog) photo = state.editingLog.photo;
 
-        let snapshot = id && state.editingLog ? state.editingLog.snapshot : null;
-        if(!snapshot) {
-            const weekAgo = ts - (7 * 24 * 60 * 60 * 1000);
+        // 再計算条件:
+        // - 新規作成 (no id)
+        // - 既存だが編集前の snapshot が存在しない
+        // - 既存だが入力された日付(ts)が元の log.id と異なる（日付を変更した）
+        let snapshot = null;
+        const originalId = id && state.editingLog ? Number(state.editingLog.id) : null;
+        const inputTs = ts;
+        const needsRecalc = !id || !state.editingLog || !state.editingLog.snapshot || (originalId !== inputTs);
+        if(!needsRecalc) {
+            snapshot = state.editingLog.snapshot;
+        } else {
+            const weekAgo = inputTs - (7 * 24 * 60 * 60 * 1000);
             const [pastMeals, pastMeds] = await Promise.all([
-                DB.getRange('meals', weekAgo, ts), DB.getRange('meds', weekAgo, ts)
+                DB.getRange('meals', weekAgo, inputTs), DB.getRange('meds', weekAgo, inputTs)
             ]);
             snapshot = { meals: pastMeals, meds: pastMeds };
         }
