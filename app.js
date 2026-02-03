@@ -113,7 +113,10 @@ window.app = {
         // Menu Items
         document.getElementById('menu-data').onclick = () => { this.toggleMenu(); document.getElementById('view-settings').classList.remove('hidden'); };
         document.getElementById('menu-med-reg').onclick = () => { this.toggleMenu(); this.openMedManager(); };
-        document.getElementById('menu-about').onclick = () => { this.toggleMenu(); alert(`Allergy Log (アレログ)\nVersion: ${APP_VERSION}\n\n医師に症状を的確に伝えるための記録アプリです。`); };
+        document.getElementById('menu-about').onclick = () => { 
+            this.toggleMenu(); 
+            document.getElementById('view-about').classList.remove('hidden'); 
+        };
         document.getElementById('menu-exit').onclick = () => { this.toggleMenu(); if(confirm('アプリを終了しますか？\n(ブラウザのタブを閉じてください)')) { window.close(); } };
         
         document.getElementById('btn-edit-entry').onclick = () => this.startEdit();
@@ -542,6 +545,7 @@ window.app = {
         document.getElementById('view-detail').classList.add('hidden');
         document.getElementById('view-settings').classList.add('hidden');
         document.getElementById('view-med-manager').classList.add('hidden');
+        document.getElementById('view-about').classList.add('hidden'); // ←これを追加
     },
     resetForms() {
         document.querySelectorAll('input[type=text], textarea').forEach(e=>e.value='');
