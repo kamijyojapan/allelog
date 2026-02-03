@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Allergy Log</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <meta name="theme-color" content="#2196f3">
+</head>
+<body>
+
+<header>
+    <h1 onclick="app.goHome()">Allergy Log</h1>
+    <div class="header-controls">
+        <button id="btn-today">今日</button>
+        <button id="btn-doctor" style="font-size:1.2rem;" title="ドクターモード">🏥</button>
+        <button id="btn-menu" title="メニュー">☰</button>
+    </div>
+</header>
+
+<div id="menu-backdrop" class="menu-backdrop"></div>
+<nav id="side-menu">
+    <div class="menu-header">
+        <span>メニュー</span>
+        <button onclick="app.toggleMenu()" style="background:none;border:none;color:white;font-size:1.5rem;">×</button>
+    </div>
+    <ul class="menu-list">
+        <li id="menu-data"><span class="menu-icon">📦</span>データ移行</li>
+        <li id="menu-med-reg"><span class="menu-icon">💊</span>薬剤登録</li>
+        <li id="menu-about"><span class="menu-icon">ℹ️</span>アレログについて</li>
+        <li id="menu-exit" style="color:var(--danger);"><span class="menu-icon">🚪</span>終了</li>
+    </ul>
+</nav>
+
+<main>
+    <section id="calendar-area">
+        <div class="calendar-header">
+            <button id="prev-month">‹</button>
+            <h2 id="current-month-label"></h2>
+            <button id="next-month">›</button>
+        </div>
+        <div class="calendar-grid" id="calendar-grid"></div>
+    </section>
+
+    <section id="timeline-area">
+        <h3 id="timeline-title">タイムライン</h3>
+        <div id="log-list"></div>
+        <div id="empty-state" class="hidden" style="text-align:center;color:#999;padding:40px;">
+            記録はありません
+        </div>
+    </section>
+</main>
+
+<div id="view-detail" class="modal-backdrop hidden">
+    <div class="modal-window">
+        <div class="modal-header">
+            <span>詳細</span>
+            <button onclick="app.closeModals()" style="background:none;border:none;font-size:1.5rem;">×</button>
+        </div>
+        <div id="detail-body"></div>
+        <div class="modal-footer" style="margin-top:20px; display:flex; gap:10px;">
+            <button id="btn-edit-entry" class="btn-outline">修正</button>
+            <button id="btn-delete-entry" class="btn-danger" style="background:transparent; color:var(--danger); border:1px solid var(--danger)">削除</button>
+        </div>
+    </div>
+</div>
+
+<div id="view-settings" class="modal-backdrop hidden">
+    <div class="modal-window">
+        <div class="modal-header">
+            <span>📦 データ移行</span>
+            <button onclick="app.closeModals()" style="background:none;border:none;font-size:1.5rem;">×</button>
+        </div>
+        <p style="font-size:0.8rem; color:#666;">機種変更時などにデータを引き継ぎます。</p>
+        <button onclick="app.exportData()" class="btn-outline">バックアップ保存 (JSON)</button>
+        <div style="margin-top:15px; text-align:center;">
+            <label style="color:var(--primary); text-decoration:underline; cursor:pointer;">
+                バックアップ復元
+                <input type="file" onchange="app.importData(this)" accept=".json" style="display:none;">
+            </label>
+        </div>
+    </div>
+</div>
+
+<div id="view-med-manager" class="modal-backdrop hidden">
+    <div class="modal-window">
+        <div class="modal-header">
+            <span>💊 薬剤登録・編集</span>
+            <button onclick="app.closeMedManager()" style="background:none;border:none;font-size:1.5rem;">×</button>
+        </div>
+        <div style="display:flex; gap:5px; margin-bottom:10px;">
+            <input type="text" id="new-med-name" placeholder="薬の名前" style="flex:2; margin:0;">
+            <input type="number" id="new-med-count" value="1" step="0.5" style="width:60px; margin:0; text-align:center;">
+            <button onclick="app.addPreset()" class="btn-primary" style="width:auto; padding:0 15px; margin:0;">追加</button>
+        </div>
+        <ul id="preset-list" style="padding-left:0; list-style:none; max-height:300px; overflow-y:auto; border-top:1px solid #eee;"></ul>
+    </div>
+</div>
+
+<div id="input-overlay" class="hidden">
+    <h2 id="form-title" style="margin:0 0 15px 0;">記録</h2>
+    <input type="hidden" id="edit-id">
+    
+    <label>日時</label>
+    <input type="datetime-local" id="record-date">
+
+    <div id="form-meal" class="form-section hidden">
+        <label>写真</label>
+        <div class="photo-buttons">
+            <button class="btn-camera-select" onclick="document.getElementById('meal-cam').click()"><span>📷</span>カメラ</button>
+            <button class="btn-camera-select" onclick="document.getElementById('meal-file').click()"><span>📁</span>アルバム</button>
+            <input type="file" id="meal-cam" accept="image/*" capture="environment" style="display:none">
+            <input type="file" id="meal-file" accept="image/*" style="display:none">
+        </div>
+        <div id="meal-preview-area" class="hidden" style="position:relative; margin-bottom:15px;">
+            <img id="meal-preview" class="log-img">
+            <button onclick="app.clearImage('meal')" style="position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.6); color:#fff; border:none; border-radius:4px; padding:5px;">削除</button>
+        </div>
+        <label>タグ</label>
+        <div id="meal-tags-container"></div>
+        <label>メモ</label>
+        <textarea id="meal-note" placeholder="食べた場所、メニュー名など"></textarea>
+        <button onclick="app.saveMeal()" class="btn-primary">保存する</button>
+    </div>
+
+    <div id="form-med" class="form-section hidden">
+        <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+            <label>飲んだ薬を選択</label>
+            <span style="font-size:0.8rem; color:#666;">錠数</span>
+        </div>
+        <div id="med-list-container" style="background:#fff; border:1px solid #ddd; border-radius:8px; margin-bottom:15px; max-height:300px; overflow-y:auto;"></div>
+        <button onclick="app.openMedManager()" class="btn-outline" style="width:100%; margin-bottom:20px; border-style:dashed; color:var(--primary); border-color:var(--primary);">
+            + 薬剤を登録・編集する
+        </button>
+        <button onclick="app.saveMed()" class="btn-primary">保存する</button>
+    </div>
+
+    <div id="form-symptom" class="form-section hidden">
+        <div style="background:#ffebee; color:#c62828; padding:10px; border-radius:8px; margin-bottom:15px; font-size:0.9rem;">
+            ⚠️ <b>過去1週間の食事と服薬の履歴も保存します</b>
+        </div>
+        <label>写真 (任意)</label>
+        <div class="photo-buttons">
+            <button class="btn-camera-select" onclick="document.getElementById('sym-cam').click()"><span>📷</span>カメラ</button>
+            <button class="btn-camera-select" onclick="document.getElementById('sym-file').click()"><span>📁</span>アルバム</button>
+            <input type="file" id="sym-cam" accept="image/*" capture="environment" style="display:none">
+            <input type="file" id="sym-file" accept="image/*" style="display:none">
+        </div>
+        <div id="symptom-preview-area" class="hidden" style="position:relative; margin-bottom:15px;">
+            <img id="symptom-preview" class="log-img">
+            <button onclick="app.clearImage('symptom')" style="position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.6); color:#fff; border:none; border-radius:4px; padding:5px;">削除</button>
+        </div>
+        <label>重症度: <span id="sev-display" style="font-weight:bold; font-size:1.2rem; color:var(--danger)">3</span></label>
+        <div style="display:flex; align-items:center; gap:10px;">
+            <span>軽</span>
+            <input type="range" id="symptom-severity" min="1" max="5" value="3" oninput="document.getElementById('sev-display').innerText=this.value" style="flex:1;">
+            <span>重</span>
+        </div>
+        <label>部位</label>
+        <input type="text" id="symptom-parts" placeholder="例: 顔, お腹, 全身">
+        <label>詳細</label>
+        <textarea id="symptom-note" placeholder="症状の様子、発症までの時間など"></textarea>
+        <button onclick="app.saveSymptom()" class="btn-danger">記録して保存</button>
+    </div>
+
+    <button onclick="app.closeInputOverlay()" class="btn-cancel">キャンセル</button>
+</div>
+
+<nav class="bottom-nav">
+    <button onclick="app.goHome()"><span style="font-size:1.2rem">🏠</span>ホーム</button>
+    <button onclick="app.openForm('meal')"><span style="font-size:1.2rem">🍽️</span>食事</button>
+    <button onclick="app.openForm('med')"><span style="font-size:1.2rem">💊</span>服薬</button>
+    <button onclick="app.openForm('symptom')" class="text-danger"><span style="font-size:1.2rem">⚠️</span>症状</button>
+</nav>
+
+<script src="app.js"></script>
+
+<script>
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js')
+            .then(() => console.log('SW Registered'))
+            .catch(err => console.error('SW Error:', err));
+    }
+</script>
+
+</body>
+</html>
