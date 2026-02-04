@@ -16,6 +16,7 @@
     <h1 onclick="app.goHome()">Allergy Log</h1>
     <div class="header-controls">
         <button id="btn-today">今日</button>
+        <button id="btn-send-data" class="hidden" title="データをサーバーへ送信">📤</button>
         <button id="btn-doctor" style="font-size:1.2rem;" title="ドクターモード">🏥</button>
         <button id="btn-menu" title="メニュー">☰</button>
     </div>
@@ -110,6 +111,18 @@
             <button onclick="app.closeModals()" style="background:none;border:none;font-size:1.5rem;">×</button>
         </div>
         <div style="padding: 10px 0;">
+            <!-- ▼▼ 追加: 基本情報設定エリア ▼▼ -->
+            <div style="padding: 10px; background:#f9f9f9; border-radius:8px; margin-bottom:15px; border:1px solid #eee;">
+                <label style="color:var(--primary); margin-bottom:10px;">👤 患者情報</label>
+                
+                <label style="font-weight:normal; font-size:0.8rem; color:#666;">カルテID</label>
+                <input type="text" id="setting-chart-id" placeholder="病院から指定されたID" style="margin-bottom:10px;">
+                
+                <label style="font-weight:normal; font-size:0.8rem; color:#666;">患者氏名</label>
+                <input type="text" id="setting-patient-name" placeholder="お名前">
+            </div>
+            <!-- ▲▲ 追加ここまで ▲▲ -->
+
             <button onclick="app.resetDoctorNotice()" class="btn-outline" style="width:100%; text-align:left; padding: 15px;">
                 <span style="margin-right: 10px;">🏥</span>ドクターモード説明を再表示
             </button>
@@ -255,6 +268,14 @@
         if(window.debugLog) window.debugLog('beforeinstallprompt イベント発火');
     });
 </script>
+
+<div id="loading-overlay" class="hidden" style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(255,255,255,0.9); z-index:9999; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+    <div class="spinner" style="width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #2196f3; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+    <p style="margin-top:20px; font-weight:bold; color:#555;">データを送信中...</p>
+</div>
+<style>
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+</style>
 
 </body>
 </html>

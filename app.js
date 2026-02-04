@@ -78,6 +78,19 @@ const DB = {
     }
 };
 
+// --- Utils Helper ---
+const Utils = {
+    blobToBase64(blob) {
+        return new Promise((resolve, reject) => {
+            if (!blob) return resolve(null);
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    }
+};
+
 // --- Tags Definition ---
 const MEAL_TAGS = {
     '食材 (特定原材料等)': ['卵', '乳', '小麦', 'そば', '落花生', 'えび', 'かに', 'くるみ', '大豆', 'ごま', '魚類', '果物', 'ナッツ類'],
@@ -133,11 +146,27 @@ window.app = {
         
         await this.reloadAll();
         
+        // ▼▼ 追加: 設定画面の入力フィールド連携 ▼▼
+        const idInput = document.getElementById('setting-chart-id');
+        const nameInput = document.getElementById('setting-patient-name');
+        
+        if (idInput && nameInput) {
+            // アプリ起動時にlocalStorageから値をロードして表示
+            idInput.value = localStorage.getItem('allelog_chart_id') || '';
+            nameInput.value = localStorage.getItem('allelog_patient_name') || '';
+            
+            // 入力変更時に即座にlocalStorageへ保存
+            idInput.onchange = (e) => localStorage.setItem('allelog_chart_id', e.target.value);
+            nameInput.onchange = (e) => localStorage.setItem('allelog_patient_name', e.target.value);
+        }
+        // ▲▲ 追加ここまで ▲▲
+        
         // Listeners
         document.getElementById('prev-month').onclick = () => this.changeMonth(-1);
         document.getElementById('next-month').onclick = () => this.changeMonth(1);
         document.getElementById('btn-today').onclick = () => this.goHome();
         document.getElementById('btn-doctor').onclick = () => this.toggleDoctorMode();
+        document.getElementById('btn-send-data').onclick = () => this.sendDoctorData();
         
         // Menu Listeners
         document.getElementById('btn-menu').onclick = () => this.toggleMenu();
@@ -253,8 +282,11 @@ window.app = {
     async toggleDoctorMode() {
         state.isDoctorMode = !state.isDoctorMode;
         const btn = document.getElementById('btn-doctor');
+        const sendBtn = document.getElementById('btn-send-data');
+
         if(state.isDoctorMode) {
             btn.classList.add('active');
+            sendBtn.classList.remove('hidden');
             
             // 初回のみ注意表示
             const db = await DB.open();
@@ -267,6 +299,7 @@ window.app = {
             };
         } else {
             btn.classList.remove('active');
+            sendBtn.classList.add('hidden');
         }
         
         // カレンダーとタイムラインを再描画
@@ -811,6 +844,107 @@ window.app = {
         const el = document.getElementById(`nav-${nav}`);
         if(el) el.classList.add('active');
     },
+
+    // ▼▼ 修正: データ送信ロジック (設定画面と同期) ▼▼
+    async sendDoctorData() {
+        // 1. 設定画面の入力値 または localStorage から取得
+        let chartId = document.getElementById('setting-chart-id').value || localStorage.getItem('allelog_chart_id') || '';
+        let patientName = document.getElementById('setting-patient-name').value || localStorage.getItem('allelog_patient_name') || '';
+
+        // 2. 未入力ならプロンプトで聞く
+        if (!chartId) {
+            chartId = prompt('カルテIDを入力してください', chartId);
+            if (chartId === null) return; // キャンセル
+        }
+        if (!patientName) {
+            patientName = prompt('患者氏名を入力してください', patientName);
+            if (patientName === null) return; // キャンセル
+        }
+
+        // 3. 確認
+        if (!confirm(`${state.currentDate.getMonth() + 1}月分のデータを送信しますか？\nID: ${chartId}\n氏名: ${patientName}`)) return;
+
+        // 4. 保存＆設定画面への反映 (同期)
+        // ここで保存することで、次回設定画面を開いたときにも反映されています
+        localStorage.setItem('allelog_chart_id', chartId);
+        localStorage.setItem('allelog_patient_name', patientName);
+        
+        // 設定画面のinput要素も更新しておく（現在裏にあるDOMも更新）
+        const idInput = document.getElementById('setting-chart-id');
+        const nameInput = document.getElementById('setting-patient-name');
+        if (idInput) idInput.value = chartId;
+        if (nameInput) nameInput.value = patientName;
+
+        // ローディング開始
+        document.getElementById('loading-overlay').classList.remove('hidden');
+
+        try {
+            const year = state.currentDate.getFullYear();
+            const month = state.currentDate.getMonth();
+
+            // 今月のデータのみ抽出
+            const targetLogs = state.logs.filter(l => {
+                const d = new Date(l.id);
+                return l.type === 'symptom' && d.getFullYear() === year && d.getMonth() === month;
+            });
+
+            if (targetLogs.length === 0) throw new Error('送信対象のデータがありません');
+
+            // データ構築
+            const payload = {
+                chartId: chartId,
+                patientName: patientName,
+                year: year,
+                month: month + 1,
+                items: []
+            };
+
+            // 画像のBase64変換処理
+            for (const log of targetLogs) {
+                const photoBase64 = await Utils.blobToBase64(log.photo);
+                let snapshotData = null;
+
+                if (log.snapshot && log.snapshot.meals) {
+                    snapshotData = { meals: [], meds: log.snapshot.meds || [] };
+                    for (const meal of log.snapshot.meals) {
+                        const mealPhoto = await Utils.blobToBase64(meal.photo);
+                        snapshotData.meals.push({ ...meal, photo: mealPhoto });
+                    }
+                }
+
+                payload.items.push({
+                    ...log,
+                    photo: photoBase64,
+                    snapshot: snapshotData
+                });
+            }
+
+            // ★ GASのウェブアプリURLをここに設定 ★
+            const SERVER_URL = 'https://script.google.com/macros/s/AKfycbzYbK0uLmOoPhijc30JvUradBV30HMGxXHmaPF22RZrxy_ZS4_fgVfut3Ne6UMsZk-8/exec'; 
+            
+            // 送信 (no-corsモードは使わず、レスポンスを受け取る)
+            const response = await fetch(SERVER_URL, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+            
+            const resJson = await response.json();
+
+            if (resJson.status === 'queued' || resJson.status === 'success') {
+                alert('送信を受け付けました。\n数分以内に医師用カルテ(PDF)が作成されます。');
+            } else {
+                throw new Error('サーバーエラー: ' + resJson.message);
+            }
+
+        } catch (e) {
+            console.error(e);
+            alert('送信失敗: ' + e.message);
+        } finally {
+            // ローディング終了
+            document.getElementById('loading-overlay').classList.add('hidden');
+        }
+    },
+
     isSameDay(d1, d2) {
         return d1.getFullYear()===d2.getFullYear() && d1.getMonth()===d2.getMonth() && d1.getDate()===d2.getDate();
     }
