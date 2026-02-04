@@ -1,6 +1,6 @@
 const DB_NAME = 'AllergyCareDB_V7';
 const DB_VERSION = 2;
-const APP_VERSION = '1.1.1';
+const APP_VERSION = '1.1.2';
 
 // --- DB Helper ---
 const DB = {
@@ -290,11 +290,17 @@ window.app = {
     getTypeName(type) { return type==='meal'?'食事':type==='med'?'服薬':'症状'; },
 
     // --- Detail Modal ---
-    showDetail(log) {
+    async showDetail(log) {
         state.editingLog = log;
         const body = document.getElementById('detail-body');
         const d = new Date(log.id);
+        const snapshotUpdate = log.type === 'symptom' ? await this.ensureSymptomSnapshot(log) : null;
         let html = `<p style="color:#666;font-size:0.8rem;margin-bottom:10px;">${d.toLocaleString()}</p>`;
+        if(snapshotUpdate && snapshotUpdate.updated) {
+            html += `<div style="background:#fff8e1;color:#8a6d3b;border:1px solid #f1e3a1;padding:6px 8px;border-radius:6px;margin-bottom:10px;font-size:0.8rem;">
+                スナップショットを更新しました
+            </div>`;
+        }
         
         if(log.photo) html += `<img src="${URL.createObjectURL(log.photo)}" style="width:100%;border-radius:8px;margin-bottom:15px;">`;
 
@@ -309,6 +315,7 @@ window.app = {
             if(log.snapshot) {
                 const mealsCount = log.snapshot.meals ? log.snapshot.meals.length : 0;
                 const medsCount = log.snapshot.meds ? log.snapshot.meds.length : 0;
+                const recalcText = log.snapshotRecalcAt ? `最終再集計: ${new Date(log.snapshotRecalcAt).toLocaleString()}` : '';
                 html += `
                 <div class="attachment-box">
                     <div class="attachment-header" onclick="document.getElementById('att-content').classList.toggle('hidden')">
@@ -317,6 +324,7 @@ window.app = {
                     </div>
                     <div id="att-content" class="attachment-content hidden">
                         <small style="color:#666; display:block; margin-bottom:5px;">発症前1週間の記録</small>
+                        ${recalcText ? `<small style="color:#888; display:block; margin-bottom:6px;">${recalcText}</small>` : ''}
                         ${this.renderSnapshotList(log.snapshot)}
                     </div>
                 </div>`;
@@ -339,6 +347,50 @@ window.app = {
             html += `<div class="mini-log"><div class="mini-thumb" style="background:#e8f5e9;display:flex;align-items:center;justify-content:center;">💊</div><div><div>${time}</div><div style="color:#666">${text}</div></div></div>`;
         });
         return html || 'データなし';
+    },
+
+    async ensureSymptomSnapshot(log) {
+        if(!log || log.type !== 'symptom') return { updated: false };
+        const ts = Number(log.id);
+        const weekAgo = ts - (7 * 24 * 60 * 60 * 1000);
+        const [pastMeals, pastMeds] = await Promise.all([
+            DB.getRange('meals', weekAgo, ts), DB.getRange('meds', weekAgo, ts)
+        ]);
+
+        const nextSnapshot = { meals: pastMeals, meds: pastMeds };
+        const prevSnapshot = log.snapshot || { meals: [], meds: [] };
+        const updated = !this.isSameSnapshot(prevSnapshot, nextSnapshot);
+        const recalcAt = Date.now();
+
+        log.snapshotRecalcAt = recalcAt;
+        if(updated) {
+            log.snapshot = nextSnapshot;
+            log.snapshotUpdatedAt = recalcAt;
+        }
+
+        await DB.put('symptoms', {
+            id: log.id,
+            type: log.type,
+            severity: log.severity,
+            parts: log.parts,
+            note: log.note,
+            photo: log.photo,
+            snapshot: log.snapshot,
+            snapshotRecalcAt: log.snapshotRecalcAt,
+            snapshotUpdatedAt: log.snapshotUpdatedAt
+        });
+
+        return { updated, recalcAt };
+    },
+
+    isSameSnapshot(a, b) {
+        const aMeals = (a.meals || []).map(i => i.id).sort((x,y)=>x-y);
+        const bMeals = (b.meals || []).map(i => i.id).sort((x,y)=>x-y);
+        const aMeds = (a.meds || []).map(i => i.id).sort((x,y)=>x-y);
+        const bMeds = (b.meds || []).map(i => i.id).sort((x,y)=>x-y);
+        return aMeals.length === bMeals.length && aMeds.length === bMeds.length
+            && aMeals.every((v,i)=>v===bMeals[i])
+            && aMeds.every((v,i)=>v===bMeds[i]);
     },
 
     // --- Forms ---
