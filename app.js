@@ -121,6 +121,11 @@ window.app = {
         ['./icon-192.png', './icon-512.png', './manifest.json'].forEach(src => {
             fetch(src).then(r => debugLog(`fetch ${src}: ${r.status}`)).catch(e => debugLog(`fetch ${src}: エラー ${e.message}`));
         });
+        const chromeVer = navigator.userAgent.match(/Chrome\/([\d.]+)/);
+        debugLog(`Chrome: ${chromeVer ? chromeVer[1] : 'unknown'}`);
+        if (navigator.getInstalledRelatedApps) {
+            navigator.getInstalledRelatedApps().then(apps => debugLog(`installedRelatedApps: ${apps.length} 件`));
+        }
         if (navigator.storage && navigator.storage.persist) {
             const isPersisted = await navigator.storage.persist();
             console.log(`Persistent storage granted: ${isPersisted}`);
