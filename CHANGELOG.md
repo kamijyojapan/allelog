@@ -1,5 +1,12 @@
 # 変更履歴 (Changelog)
 
+## [1.1.4] - 2026-02-04
+
+### 修正
+- PWAインストールができない問題を修正（manifest.jsonに`description`フィールドを追加）
+- Service Workerで`chrome-extension`等の非HTTPスキームをスキップしてエラーを修正
+- Service Workerキャッシュバージョンをv10に更新
+
 ## [1.1.3] - 2026-02-04
 
 ### 改善

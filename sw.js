@@ -1,4 +1,4 @@
-const CACHE_NAME = 'allergy-log-v9';
+const CACHE_NAME = 'allergy-log-v10';
 const ASSETS = [
     './',
     './index.html',
@@ -33,6 +33,10 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
+    if (!e.request.url.startsWith('http')) {
+        return;
+    }
+    
     if (e.request.url.includes('.html') || e.request.url.includes('.js')) {
         e.respondWith(
             fetch(e.request)

@@ -2,7 +2,7 @@
 
 食事と病院をスマホでつなぐ、アレルギー症状記録PWA（Progressive Web App）です。
 
-**Version:** 1.1.3
+**Version:** 1.1.4
 
 <p align="center">
   <img src="icon-192.png" width="120" alt="アレログ Icon">
@@ -46,9 +46,8 @@
 3.  **Android (Chrome):** メニュー「︙」 → 「アプリをインストール」
 
 ## 🆕 最近の更新
-- Service WorkerをNetwork First戦略に変更し、アプリ更新がすぐに反映されるように改善。
-- Persistent Storage APIを実装し、ブラウザのデータ削除で記録が消えるリスクを軽減。
-- PWAインストールプロンプトのハンドリングを追加。
+- PWAインストールの問題を修正（manifest.jsonにdescriptionを追加）。
+- Service Workerでchrome-extension等の非HTTPスキームをスキップするように修正。
 
 ---
 License: MIT

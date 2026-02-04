@@ -1,6 +1,6 @@
 const DB_NAME = 'AllergyCareDB_V7';
 const DB_VERSION = 2;
-const APP_VERSION = '1.1.3';
+const APP_VERSION = '1.1.4';
 
 // --- DB Helper ---
 const DB = {

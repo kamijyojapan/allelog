@@ -1,6 +1,7 @@
 {
   "name": "Allergy Log (アレログ)",
   "short_name": "アレログ",
+  "description": "食事と病院をスマホでつなぐ、アレルギー症状記録アプリ",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f5f7fa",
