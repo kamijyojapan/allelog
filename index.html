@@ -113,7 +113,28 @@
             <button onclick="app.resetDoctorNotice()" class="btn-outline" style="width:100%; text-align:left; padding: 15px;">
                 <span style="margin-right: 10px;">🏥</span>ドクターモード説明を再表示
             </button>
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:15px 0; border-top:1px solid var(--border);">
+                <span>🐛 デバッグログ</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="toggle-debug">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <button id="btn-show-logs" class="btn-outline" style="width:100%; text-align:left; padding:15px;">
+                <span style="margin-right:10px;">📋</span>ログを表示
+            </button>
         </div>
+    </div>
+</div>
+
+<div id="view-debug-logs" class="modal-backdrop hidden" onclick="if(event.target===this) app.closeModals()">
+    <div class="modal-window">
+        <div class="modal-header">
+            <span>📋 デバッグログ</span>
+            <button onclick="app.closeModals()" style="background:none;border:none;font-size:1.5rem;">×</button>
+        </div>
+        <button onclick="app.clearDebugLogs()" class="btn-outline" style="width:100%; padding:8px; margin-bottom:10px;">クリア</button>
+        <pre id="debug-log-output" style="background:#1e1e1e; color:#d4d4d4; padding:10px; border-radius:6px; font-size:0.75rem; max-height:55vh; overflow-y:auto; white-space:pre-wrap; margin:0; word-break:break-all;"></pre>
     </div>
 </div>
 
@@ -137,7 +158,7 @@
 
             <hr style="border:none; border-top:1px solid #eee; margin: 15px 0;">
             <p style="font-size: 0.8rem; text-align: center; color: #888;">
-                Allergy Log (アレログ) v1.1.5
+                Allergy Log (アレログ) v1.1.6
             </p>
         </div>
     </div>
@@ -224,13 +245,14 @@
 <script>
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js')
-            .then(() => console.log('SW Registered'))
-            .catch(err => console.error('SW Error:', err));
+            .then(() => { console.log('SW Registered'); if(window.debugLog) window.debugLog('Service Worker 登録: 成功'); })
+            .catch(err => { console.error('SW Error:', err); if(window.debugLog) window.debugLog('Service Worker エラー: ' + err.message); });
     }
-    
+
     window.addEventListener('beforeinstallprompt', (e) => {
         window.deferredPrompt = e;
         console.log('PWA installable');
+        if(window.debugLog) window.debugLog('beforeinstallprompt イベント発火');
     });
 </script>
 

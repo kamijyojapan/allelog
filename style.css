@@ -186,3 +186,21 @@ label { font-weight: bold; display: block; margin-bottom: 5px; font-size: 0.9rem
     background: rgba(229, 57, 53, 0.1);
 }
 .text-danger { color: var(--danger) !important; }
+
+/* Toggle Switch */
+.toggle-switch {
+    position: relative; display: inline-block; width: 48px; height: 28px;
+}
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+    position: absolute; cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #ccc; border-radius: 28px; transition: 0.3s;
+}
+.toggle-slider:before {
+    content: ""; position: absolute;
+    height: 22px; width: 22px; left: 3px; bottom: 3px;
+    background-color: white; border-radius: 50%; transition: 0.3s;
+}
+.toggle-switch input:checked + .toggle-slider { background-color: var(--primary); }
+.toggle-switch input:checked + .toggle-slider:before { transform: translateX(20px); }

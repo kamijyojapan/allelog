@@ -1,6 +1,6 @@
 const DB_NAME = 'AllergyCareDB_V7';
 const DB_VERSION = 2;
-const APP_VERSION = '1.1.5';
+const APP_VERSION = '1.1.6';
 
 // --- DB Helper ---
 const DB = {
@@ -96,8 +96,26 @@ const state = {
     isMenuOpen: false
 };
 
+const debugLogs = [];
+let debugConsoleEnabled = false;
+
+function debugLog(msg) {
+    const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+    debugLogs.push(`[${time}] ${msg}`);
+    if (debugConsoleEnabled) console.log('[DEBUG]', msg);
+    const el = document.getElementById('debug-log-output');
+    if (el) {
+        el.textContent = debugLogs.join('\n');
+        el.scrollTop = el.scrollHeight;
+    }
+}
+window.debugLog = debugLog;
+
 window.app = {
     async init() {
+        debugLog(`アプリ起動 v${APP_VERSION}`);
+        debugLog(`display-mode: ${window.matchMedia('(display-mode: standalone)').matches ? 'standalone' : 'browser'}`);
+        debugLog(`deferredPrompt: ${window.deferredPrompt ? 'あり' : 'なし'}`);
         if (navigator.storage && navigator.storage.persist) {
             const isPersisted = await navigator.storage.persist();
             console.log(`Persistent storage granted: ${isPersisted}`);
@@ -133,17 +151,21 @@ window.app = {
         const installBtn = document.getElementById('menu-install');
         if (window.matchMedia('(display-mode: standalone)').matches) {
             installBtn.classList.add('hidden');
+            debugLog('インストールボタン: 非表示（installed）');
         } else {
             window.addEventListener('beforeinstallprompt', () => {
                 installBtn.classList.remove('hidden');
+                debugLog('インストールボタン: 表示中');
             });
+            debugLog('インストールボタン: beforeinstallprompt 待機中');
         }
         installBtn.onclick = async () => {
             this.toggleMenu();
+            debugLog(`インストールボタン押し: deferredPrompt ${window.deferredPrompt ? 'あり' : 'なし'}`);
             if (window.deferredPrompt) {
                 window.deferredPrompt.prompt();
                 const { outcome } = await window.deferredPrompt.userChoice;
-                console.log('PWA install outcome:', outcome);
+                debugLog(`prompt 結果: ${outcome}`);
                 window.deferredPrompt = null;
                 installBtn.classList.add('hidden');
             }
@@ -151,8 +173,30 @@ window.app = {
         window.addEventListener('appinstalled', () => {
             installBtn.classList.add('hidden');
             window.deferredPrompt = null;
-            console.log('PWA installed');
+            debugLog('appinstalled イベント発火');
         });
+
+        // デバッグログ設定の読み込みと配線
+        const db = await DB.open();
+        const debugSettingReq = db.transaction('settings').objectStore('settings').get('debug_mode');
+        debugSettingReq.onsuccess = () => {
+            if (debugSettingReq.result && debugSettingReq.result.value) {
+                debugConsoleEnabled = true;
+                document.getElementById('toggle-debug').checked = true;
+            }
+        };
+        document.getElementById('toggle-debug').onchange = async (e) => {
+            debugConsoleEnabled = e.target.checked;
+            await DB.put('settings', { key: 'debug_mode', value: e.target.checked });
+            debugLog('コンソール出力を' + (e.target.checked ? '有効にしました' : '無効にしました'));
+        };
+        document.getElementById('btn-show-logs').onclick = () => {
+            this.closeModals();
+            document.getElementById('view-debug-logs').classList.remove('hidden');
+            document.getElementById('debug-log-output').textContent = debugLogs.join('\n');
+            const logEl = document.getElementById('debug-log-output');
+            logEl.scrollTop = logEl.scrollHeight;
+        };
 
         document.getElementById('btn-edit-entry').onclick = () => this.startEdit();
         document.getElementById('btn-delete-entry').onclick = () => this.deleteEntry();
@@ -664,6 +708,12 @@ window.app = {
         document.getElementById('view-settings-menu').classList.add('hidden');
         document.getElementById('view-med-manager').classList.add('hidden');
         document.getElementById('view-about').classList.add('hidden');
+        document.getElementById('view-debug-logs').classList.add('hidden');
+    },
+    clearDebugLogs() {
+        debugLogs.length = 0;
+        const el = document.getElementById('debug-log-output');
+        if (el) el.textContent = '';
     },
     resetForms() {
         document.querySelectorAll('input[type=text], textarea').forEach(e=>e.value='');
