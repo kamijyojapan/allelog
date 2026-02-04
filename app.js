@@ -116,6 +116,11 @@ window.app = {
         debugLog(`アプリ起動 v${APP_VERSION}`);
         debugLog(`display-mode: ${window.matchMedia('(display-mode: standalone)').matches ? 'standalone' : 'browser'}`);
         debugLog(`deferredPrompt: ${window.deferredPrompt ? 'あり' : 'なし'}`);
+        debugLog(`URL: ${window.location.href}`);
+        // アイコンとmanifestのレスポンス確認
+        ['./icon-192.png', './icon-512.png', './manifest.json'].forEach(src => {
+            fetch(src).then(r => debugLog(`fetch ${src}: ${r.status}`)).catch(e => debugLog(`fetch ${src}: エラー ${e.message}`));
+        });
         if (navigator.storage && navigator.storage.persist) {
             const isPersisted = await navigator.storage.persist();
             console.log(`Persistent storage granted: ${isPersisted}`);
