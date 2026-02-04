@@ -1,5 +1,13 @@
 # 変更履歴 (Changelog)
 
+## [1.1.5] - 2026-02-04
+
+### 追加
+- アプリ内インストールボタンを追加（side-menu に「📲 アプリとしてインストール」項目を配置）
+- Chrome の自動インストールバナーを有効にする（`beforeinstallprompt` の `preventDefault` を削除）
+- インストール済み検出（`display-mode: standalone`）でボタンを自動非表示にする
+- `appinstalled` イベント対応で、Chromeバナーから先にインストールされた場合にもボタンを非表示にする
+
 ## [1.1.4] - 2026-02-04
 
 ### 修正

@@ -1,6 +1,6 @@
 const DB_NAME = 'AllergyCareDB_V7';
 const DB_VERSION = 2;
-const APP_VERSION = '1.1.4';
+const APP_VERSION = '1.1.5';
 
 // --- DB Helper ---
 const DB = {
@@ -128,7 +128,32 @@ window.app = {
             document.getElementById('view-about').classList.remove('hidden'); 
         };
         document.getElementById('menu-exit').onclick = () => { this.toggleMenu(); if(confirm('アプリを終了しますか？\n(ブラウザのタブを閉じてください)')) { window.close(); } };
-        
+
+        // PWA インストールボタン
+        const installBtn = document.getElementById('menu-install');
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            installBtn.classList.add('hidden');
+        } else {
+            window.addEventListener('beforeinstallprompt', () => {
+                installBtn.classList.remove('hidden');
+            });
+        }
+        installBtn.onclick = async () => {
+            this.toggleMenu();
+            if (window.deferredPrompt) {
+                window.deferredPrompt.prompt();
+                const { outcome } = await window.deferredPrompt.userChoice;
+                console.log('PWA install outcome:', outcome);
+                window.deferredPrompt = null;
+                installBtn.classList.add('hidden');
+            }
+        };
+        window.addEventListener('appinstalled', () => {
+            installBtn.classList.add('hidden');
+            window.deferredPrompt = null;
+            console.log('PWA installed');
+        });
+
         document.getElementById('btn-edit-entry').onclick = () => this.startEdit();
         document.getElementById('btn-delete-entry').onclick = () => this.deleteEntry();
         

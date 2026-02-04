@@ -33,6 +33,7 @@
         <li id="menu-settings"><span class="menu-icon">⚙️</span>設定</li>
         <li id="menu-refresh"><span class="menu-icon">🔄</span>更新</li>
         <li id="menu-about"><span class="menu-icon">ℹ️</span>アレログについて</li>
+        <li id="menu-install" class="hidden"><span class="menu-icon">📲</span>アプリとしてインストール</li>
         <li id="menu-exit" style="color:var(--danger);"><span class="menu-icon">🚪</span>終了</li>
     </ul>
 </nav>
@@ -136,7 +137,7 @@
 
             <hr style="border:none; border-top:1px solid #eee; margin: 15px 0;">
             <p style="font-size: 0.8rem; text-align: center; color: #888;">
-                Allergy Log (アレログ) v1.1.4
+                Allergy Log (アレログ) v1.1.5
             </p>
         </div>
     </div>
@@ -227,10 +228,8 @@
             .catch(err => console.error('SW Error:', err));
     }
     
-    let deferredPrompt;
     window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        deferredPrompt = e;
+        window.deferredPrompt = e;
         console.log('PWA installable');
     });
 </script>
