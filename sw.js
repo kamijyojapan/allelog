@@ -1,4 +1,4 @@
-const CACHE_NAME = 'allergy-log-v8';
+const CACHE_NAME = 'allergy-log-v9';
 const ASSETS = [
     './',
     './index.html',
@@ -11,19 +11,41 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', (e) => {
+    console.log('[SW] Installing...');
+    self.skipWaiting();
     e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)));
 });
 
 self.addEventListener('activate', (e) => {
+    console.log('[SW] Activating...');
     e.waitUntil(
-        caches.keys().then(keys => Promise.all(
-            keys.map(key => key !== CACHE_NAME ? caches.delete(key) : null)
-        ))
+        caches.keys().then(keys => {
+            return Promise.all(
+                keys.map(key => {
+                    if (key !== CACHE_NAME) {
+                        console.log('[SW] Deleting old cache:', key);
+                        return caches.delete(key);
+                    }
+                })
+            );
+        }).then(() => self.clients.claim())
     );
 });
 
 self.addEventListener('fetch', (e) => {
-    e.respondWith(
-        caches.match(e.request).then(response => response || fetch(e.request))
-    );
+    if (e.request.url.includes('.html') || e.request.url.includes('.js')) {
+        e.respondWith(
+            fetch(e.request)
+                .then(response => {
+                    const clone = response.clone();
+                    caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
+                    return response;
+                })
+                .catch(() => caches.match(e.request))
+        );
+    } else {
+        e.respondWith(
+            caches.match(e.request).then(response => response || fetch(e.request))
+        );
+    }
 });

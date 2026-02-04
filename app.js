@@ -1,6 +1,6 @@
 const DB_NAME = 'AllergyCareDB_V7';
 const DB_VERSION = 2;
-const APP_VERSION = '1.1.2';
+const APP_VERSION = '1.1.3';
 
 // --- DB Helper ---
 const DB = {
@@ -98,6 +98,11 @@ const state = {
 
 window.app = {
     async init() {
+        if (navigator.storage && navigator.storage.persist) {
+            const isPersisted = await navigator.storage.persist();
+            console.log(`Persistent storage granted: ${isPersisted}`);
+        }
+        
         await this.reloadAll();
         
         // Listeners

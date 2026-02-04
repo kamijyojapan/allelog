@@ -1,5 +1,13 @@
 # 変更履歴 (Changelog)
 
+## [1.1.3] - 2026-02-04
+
+### 改善
+- Service WorkerをNetwork First戦略に変更し、HTML/JSファイルの更新が即座に反映されるように改善
+- Persistent Storage APIを実装し、ブラウザのデータ削除でIndexedDBが消えるリスクを軽減
+- PWAインストールプロンプトのハンドリングを追加
+- Service Workerのキャッシュバージョンをv9に更新
+
 ## [1.1.2] - 2026-02-04
 
 ### 修正
