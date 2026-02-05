@@ -35,7 +35,6 @@
         <li id="menu-refresh"><span class="menu-icon">🔄</span>更新</li>
         <li id="menu-about"><span class="menu-icon">ℹ️</span>アレログについて</li>
         <li id="menu-install" class="hidden"><span class="menu-icon">📲</span>アプリとしてインストール</li>
-        <li id="menu-exit" style="color:var(--danger);"><span class="menu-icon">🚪</span>終了</li>
     </ul>
 </nav>
 
@@ -85,6 +84,9 @@
                 バックアップ復元
                 <input type="file" onchange="app.importData(this)" accept=".json" style="display:none;">
             </label>
+        </div>
+        <div class="modal-footer" style="margin-top:15px;">
+            <button onclick="app.closeModals()" class="btn-outline" style="width:100%;">閉じる</button>
         </div>
     </div>
 </div>
@@ -186,7 +188,7 @@
 
             <hr style="border:none; border-top:1px solid #eee; margin: 15px 0;">
             <p style="font-size: 0.8rem; text-align: center; color: #888;">
-                Allergy Log (アレログ) v1.2.4
+                Allergy Log (アレログ) v1.2.5
             </p>
         </div>
     </div>

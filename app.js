@@ -1,6 +1,6 @@
 const DB_NAME = 'AllergyCareDB_V7';
 const DB_VERSION = 2;
-const APP_VERSION = '1.2.4';
+const APP_VERSION = '1.2.5';
 
 // --- DB Helper ---
 const DB = {
@@ -184,7 +184,6 @@ window.app = {
             this.toggleMenu(); 
             document.getElementById('view-about').classList.remove('hidden'); 
         };
-        document.getElementById('menu-exit').onclick = () => { this.toggleMenu(); if(confirm('アプリを終了しますか？\n(ブラウザのタブを閉じてください)')) { window.close(); } };
 
         const changelogBtn = document.getElementById('btn-changelog');
         if (changelogBtn) changelogBtn.onclick = () => this.openChangelog();
