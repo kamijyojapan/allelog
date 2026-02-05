@@ -128,18 +128,20 @@
             </div>
             <!-- ▲▲ 追加ここまで ▲▲ -->
 
+            <div style="padding: 10px; background:#f9f9f9; border-radius:8px; margin-bottom:15px; border:1px solid #eee;">
+                <label style="color:var(--primary); margin-bottom:10px;">📎 スナップショット設定</label>
+                <label style="font-weight:normal; font-size:0.8rem; color:#666;">症状記録時の遡り日数</label>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <input type="number" id="setting-snapshot-days" value="1" min="1" max="30" style="width:60px; text-align:center; margin:0;">
+                    <span style="font-size:0.85rem; color:#666;">日</span>
+                </div>
+            </div>
+
             <button onclick="app.resetDoctorNotice()" class="btn-outline" style="width:100%; text-align:left; padding: 15px;">
                 <span style="margin-right: 10px;">🏥</span>ドクターモード説明を再表示
             </button>
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:15px 0; border-top:1px solid var(--border);">
-                <span>🐛 デバッグログ</span>
-                <label class="toggle-switch">
-                    <input type="checkbox" id="toggle-debug">
-                    <span class="toggle-slider"></span>
-                </label>
-            </div>
-            <button id="btn-show-logs" class="btn-outline" style="width:100%; text-align:left; padding:15px;">
-                <span style="margin-right:10px;">📋</span>ログを表示
+            <button id="btn-show-logs" class="btn-outline" style="width:100%; text-align:left; padding:15px; margin-top:10px;">
+                <span style="margin-right:10px;">🐛</span>デバッグログを表示
             </button>
         </div>
         <div class="modal-footer" style="margin-top:15px; display:flex; gap:10px;">
@@ -188,7 +190,7 @@
 
             <hr style="border:none; border-top:1px solid #eee; margin: 15px 0;">
             <p style="font-size: 0.8rem; text-align: center; color: #888;">
-                Allergy Log (アレログ) v1.2.5
+                Allergy Log (アレログ) v1.2.7
             </p>
         </div>
     </div>
@@ -247,7 +249,7 @@
 
     <div id="form-symptom" class="form-section hidden">
         <div style="background:#ffebee; color:#c62828; padding:10px; border-radius:8px; margin-bottom:15px; font-size:0.9rem;">
-            ⚠️ <b>過去1週間の食事と服薬の履歴も保存します</b>
+            ⚠️ <b><span id="symptom-snapshot-notice">過去1日の食事と服薬の履歴も保存します</span></b>
         </div>
         <label>写真 (任意)</label>
         <div class="photo-buttons">

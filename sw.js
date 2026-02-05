@@ -1,4 +1,4 @@
-const CACHE_NAME = 'allergy-log-v15';
+const CACHE_NAME = 'allergy-log-v17';
 const ASSETS = [
     './',
     './index.html',

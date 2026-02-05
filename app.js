@@ -1,6 +1,6 @@
 const DB_NAME = 'AllergyCareDB_V7';
 const DB_VERSION = 2;
-const APP_VERSION = '1.2.5';
+const APP_VERSION = '1.2.7';
 
 // --- DB Helper ---
 const DB = {
@@ -110,12 +110,11 @@ const state = {
 };
 
 const debugLogs = [];
-let debugConsoleEnabled = false;
 
 function debugLog(msg) {
     const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
     debugLogs.push(`[${time}] ${msg}`);
-    if (debugConsoleEnabled) console.log('[DEBUG]', msg);
+    console.log('[DEBUG]', msg);
     const el = document.getElementById('debug-log-output');
     if (el) {
         el.textContent = debugLogs.join('\n');
@@ -159,6 +158,16 @@ window.app = {
             idInput.onchange = (e) => localStorage.setItem('allelog_chart_id', e.target.value);
             nameInput.onchange = (e) => localStorage.setItem('allelog_patient_name', e.target.value);
         }
+
+        const snapshotDaysInput = document.getElementById('setting-snapshot-days');
+        if (snapshotDaysInput) {
+            snapshotDaysInput.value = this.getSnapshotDays();
+            snapshotDaysInput.onchange = (e) => {
+                localStorage.setItem('allelog_snapshot_days', e.target.value);
+                this.updateSnapshotNotice();
+            };
+        }
+        this.updateSnapshotNotice();
         // ▲▲ 追加ここまで ▲▲
         
         // Listeners
@@ -217,20 +226,7 @@ window.app = {
             debugLog('appinstalled イベント発火');
         });
 
-        // デバッグログ設定の読み込みと配線
-        const db = await DB.open();
-        const debugSettingReq = db.transaction('settings').objectStore('settings').get('debug_mode');
-        debugSettingReq.onsuccess = () => {
-            if (debugSettingReq.result && debugSettingReq.result.value) {
-                debugConsoleEnabled = true;
-                document.getElementById('toggle-debug').checked = true;
-            }
-        };
-        document.getElementById('toggle-debug').onchange = async (e) => {
-            debugConsoleEnabled = e.target.checked;
-            await DB.put('settings', { key: 'debug_mode', value: e.target.checked });
-            debugLog('コンソール出力を' + (e.target.checked ? '有効にしました' : '無効にしました'));
-        };
+        // デバッグログ表示ボタンの配線
         document.getElementById('btn-show-logs').onclick = () => {
             this.closeModals();
             document.getElementById('view-debug-logs').classList.remove('hidden');
@@ -442,7 +438,7 @@ window.app = {
                         <span>▼</span>
                     </div>
                     <div id="att-content" class="attachment-content hidden">
-                        <small style="color:#666; display:block; margin-bottom:5px;">発症前1週間の記録</small>
+                        <small style="color:#666; display:block; margin-bottom:5px;">発症前${this.getSnapshotDays()}日の記録</small>
                         ${recalcText ? `<small style="color:#888; display:block; margin-bottom:6px;">${recalcText}</small>` : ''}
                         ${this.renderSnapshotList(log.snapshot)}
                     </div>
@@ -471,9 +467,9 @@ window.app = {
     async ensureSymptomSnapshot(log) {
         if(!log || log.type !== 'symptom') return { updated: false };
         const ts = Number(log.id);
-        const weekAgo = ts - (7 * 24 * 60 * 60 * 1000);
+        const sinceTs = ts - (this.getSnapshotDays() * 24 * 60 * 60 * 1000);
         const [pastMeals, pastMeds] = await Promise.all([
-            DB.getRange('meals', weekAgo, ts), DB.getRange('meds', weekAgo, ts)
+            DB.getRange('meals', sinceTs, ts), DB.getRange('meds', sinceTs, ts)
         ]);
 
         const nextSnapshot = { meals: pastMeals, meds: pastMeds };
@@ -510,6 +506,14 @@ window.app = {
         return aMeals.length === bMeals.length && aMeds.length === bMeds.length
             && aMeals.every((v,i)=>v===bMeals[i])
             && aMeds.every((v,i)=>v===bMeds[i]);
+    },
+
+    getSnapshotDays() {
+        return Number(localStorage.getItem('allelog_snapshot_days')) || 1;
+    },
+    updateSnapshotNotice() {
+        const el = document.getElementById('symptom-snapshot-notice');
+        if (el) el.textContent = `過去${this.getSnapshotDays()}日の食事と服薬の履歴も保存します`;
     },
 
     // --- Forms ---
@@ -663,7 +667,7 @@ window.app = {
         const originalId = id ? Number(id) : null;
         const hasDateChange = !!originalId && originalId !== ts;
 
-        if(!id && !confirm('過去1週間の食事と服薬の履歴も保存します。よろしいですか？')) return;
+        if(!id && !confirm(`過去${this.getSnapshotDays()}日の食事と服薬の履歴も保存します。よろしいですか？`)) return;
 
         const severity = document.getElementById('symptom-severity').value;
         const parts = document.getElementById('symptom-parts').value;
@@ -674,9 +678,9 @@ window.app = {
 
         let snapshot = (id && state.editingLog && !hasDateChange) ? state.editingLog.snapshot : null;
         if(!snapshot) {
-            const weekAgo = ts - (7 * 24 * 60 * 60 * 1000);
+            const sinceTs = ts - (this.getSnapshotDays() * 24 * 60 * 60 * 1000);
             const [pastMeals, pastMeds] = await Promise.all([
-                DB.getRange('meals', weekAgo, ts), DB.getRange('meds', weekAgo, ts)
+                DB.getRange('meals', sinceTs, ts), DB.getRange('meds', sinceTs, ts)
             ]);
             snapshot = { meals: pastMeals, meds: pastMeds };
         }
@@ -779,12 +783,18 @@ window.app = {
     saveSettingsAndClose() {
         const idInput = document.getElementById('setting-chart-id');
         const nameInput = document.getElementById('setting-patient-name');
-        
+
         if (idInput && nameInput) {
             localStorage.setItem('allelog_chart_id', idInput.value);
             localStorage.setItem('allelog_patient_name', nameInput.value);
         }
-        
+
+        const snapshotDaysInput = document.getElementById('setting-snapshot-days');
+        if (snapshotDaysInput) {
+            localStorage.setItem('allelog_snapshot_days', snapshotDaysInput.value);
+            this.updateSnapshotNotice();
+        }
+
         this.closeModals();
     },
     clearDebugLogs() {
