@@ -108,13 +108,20 @@ header h1 { margin: 0; font-size: 1.1rem; color: var(--primary); cursor: pointer
     background: rgba(0,0,0,0.5); z-index: 2000;
     display: flex; justify-content: center; align-items: center;
 }
+.modal-backdrop.modal-front { z-index: 2100; }
 .modal-window {
     background: var(--card); width: 90%; max-width: 400px; max-height: 80vh; overflow-y: auto;
     border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
+.modal-window.changelog-window { max-width: 520px; }
 .modal-header {
     display: flex; justify-content: space-between; align-items: center;
     padding-bottom: 15px; border-bottom: 1px solid var(--border); margin-bottom: 20px; font-weight: bold; font-size: 1.1rem;
+}
+.changelog-content {
+    background: #f9f9f9; color: #333; padding: 12px; border-radius: 8px;
+    font-size: 0.85rem; line-height: 1.6; max-height: 55vh; overflow-y: auto;
+    white-space: pre-wrap; margin: 0; border: 1px solid #eee;
 }
 
 /* Inputs, Buttons, Tags */

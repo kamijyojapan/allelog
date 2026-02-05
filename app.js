@@ -1,6 +1,6 @@
 const DB_NAME = 'AllergyCareDB_V7';
 const DB_VERSION = 2;
-const APP_VERSION = '1.2.2';
+const APP_VERSION = '1.2.3';
 
 // --- DB Helper ---
 const DB = {
@@ -185,6 +185,9 @@ window.app = {
             document.getElementById('view-about').classList.remove('hidden'); 
         };
         document.getElementById('menu-exit').onclick = () => { this.toggleMenu(); if(confirm('アプリを終了しますか？\n(ブラウザのタブを閉じてください)')) { window.close(); } };
+
+        const changelogBtn = document.getElementById('btn-changelog');
+        if (changelogBtn) changelogBtn.onclick = () => this.openChangelog();
 
         // PWA インストールボタン
         const installBtn = document.getElementById('menu-install');
@@ -751,7 +754,28 @@ window.app = {
         document.getElementById('view-settings-menu').classList.add('hidden');
         document.getElementById('view-med-manager').classList.add('hidden');
         document.getElementById('view-about').classList.add('hidden');
+        document.getElementById('view-changelog').classList.add('hidden');
         document.getElementById('view-debug-logs').classList.add('hidden');
+    },
+    async openChangelog() {
+        const modal = document.getElementById('view-changelog');
+        const output = document.getElementById('changelog-output');
+        if (!modal || !output) return;
+        modal.classList.remove('hidden');
+        if (output.dataset.loaded) return;
+
+        try {
+            const res = await fetch('CHANGELOG.md');
+            const text = await res.text();
+            output.textContent = text;
+            output.dataset.loaded = '1';
+        } catch (e) {
+            output.textContent = '更新履歴を読み込めませんでした。';
+        }
+    },
+    closeChangelog() {
+        const modal = document.getElementById('view-changelog');
+        if (modal) modal.classList.add('hidden');
     },
     clearDebugLogs() {
         debugLogs.length = 0;
