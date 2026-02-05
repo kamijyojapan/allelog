@@ -1,6 +1,6 @@
 const DB_NAME = 'AllergyCareDB_V7';
 const DB_VERSION = 2;
-const APP_VERSION = '1.2.3';
+const APP_VERSION = '1.2.4';
 
 // --- DB Helper ---
 const DB = {
@@ -776,6 +776,17 @@ window.app = {
     closeChangelog() {
         const modal = document.getElementById('view-changelog');
         if (modal) modal.classList.add('hidden');
+    },
+    saveSettingsAndClose() {
+        const idInput = document.getElementById('setting-chart-id');
+        const nameInput = document.getElementById('setting-patient-name');
+        
+        if (idInput && nameInput) {
+            localStorage.setItem('allelog_chart_id', idInput.value);
+            localStorage.setItem('allelog_patient_name', nameInput.value);
+        }
+        
+        this.closeModals();
     },
     clearDebugLogs() {
         debugLogs.length = 0;
