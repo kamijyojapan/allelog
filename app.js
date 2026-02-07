@@ -1,6 +1,6 @@
 const DB_NAME = 'AllergyCareDB_V7';
 const DB_VERSION = 2;
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.3.1';
 
 // --- DB Helper ---
 const DB = {
@@ -186,9 +186,9 @@ window.app = {
         // Menu Items
         document.getElementById('menu-data').onclick = () => { this.toggleMenu(); document.getElementById('view-settings').classList.remove('hidden'); };
         document.getElementById('menu-med-reg').onclick = () => { this.toggleMenu(); this.openMedManager(); };
-        document.getElementById('menu-settings').onclick = () => { 
-            this.toggleMenu(); 
-            document.getElementById('view-settings-menu').classList.remove('hidden'); 
+        document.getElementById('menu-settings').onclick = () => {
+            this.toggleMenu();
+            this.openSettingsMenu();
         };
         document.getElementById('menu-refresh').onclick = () => { this.toggleMenu(); this.forceRefresh(); };
         document.getElementById('menu-about').onclick = () => { 
@@ -794,6 +794,23 @@ window.app = {
         document.getElementById('view-about').classList.add('hidden');
         document.getElementById('view-changelog').classList.add('hidden');
         document.getElementById('view-debug-logs').classList.add('hidden');
+    },
+    openSettingsMenu() {
+        // localStorageから値を読み込んで設定画面に表示
+        const idInput = document.getElementById('setting-chart-id');
+        const nameInput = document.getElementById('setting-patient-name');
+        const snapshotDaysInput = document.getElementById('setting-snapshot-days');
+
+        if (idInput && nameInput) {
+            idInput.value = localStorage.getItem('allelog_chart_id') || '';
+            nameInput.value = localStorage.getItem('allelog_patient_name') || '';
+        }
+
+        if (snapshotDaysInput) {
+            snapshotDaysInput.value = this.getSnapshotDays();
+        }
+
+        document.getElementById('view-settings-menu').classList.remove('hidden');
     },
     async openChangelog() {
         const modal = document.getElementById('view-changelog');
