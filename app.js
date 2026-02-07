@@ -1,6 +1,6 @@
 const DB_NAME = 'AllergyCareDB_V7';
 const DB_VERSION = 2;
-const APP_VERSION = '1.2.8';
+const APP_VERSION = '1.3.0';
 
 // --- DB Helper ---
 const DB = {
@@ -59,7 +59,7 @@ const DB = {
     },
     async compress(file) {
         if(!file) return null;
-        return new Promise(resolve => {
+        return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = (e) => {
                 const img = new Image();
@@ -71,8 +71,10 @@ const DB = {
                     cvs.getContext('2d').drawImage(img, 0, 0, cvs.width, cvs.height);
                     cvs.toBlob(resolve, 'image/jpeg', 0.6);
                 };
+                img.onerror = () => reject(new Error('画像の読み込みに失敗しました'));
                 img.src = e.target.result;
             };
+            reader.onerror = () => reject(new Error('ファイルの読み込みに失敗しました'));
             reader.readAsDataURL(file);
         });
     }
@@ -104,7 +106,7 @@ const state = {
     selectedDate: new Date(),
     logs: [],
     editingLog: null,
-    tempPhoto: null,
+    tempPhotos: [],
     isDoctorMode: false,
     isMenuOpen: false
 };
@@ -239,10 +241,10 @@ window.app = {
         document.getElementById('btn-delete-entry').onclick = () => this.deleteEntry();
         
         // Photo Inputs
-        this.setupPhotoInput('meal-cam', 'meal-preview', 'meal-preview-area');
-        this.setupPhotoInput('meal-file', 'meal-preview', 'meal-preview-area');
-        this.setupPhotoInput('sym-cam', 'symptom-preview', 'symptom-preview-area');
-        this.setupPhotoInput('sym-file', 'symptom-preview', 'symptom-preview-area');
+        this.setupPhotoInput('meal-cam', 'meal');
+        this.setupPhotoInput('meal-file', 'meal');
+        this.setupPhotoInput('sym-cam', 'symptom');
+        this.setupPhotoInput('sym-file', 'symptom');
         
         // 初期状態でホームをアクティブに
         this.setActiveNav('home');
@@ -252,7 +254,18 @@ window.app = {
         const [meals, meds, symptoms] = await Promise.all([
             DB.getAll('meals'), DB.getAll('meds'), DB.getAll('symptoms')
         ]);
-        state.logs = [...meals, ...meds, ...symptoms].sort((a,b) => b.id - a.id);
+
+        // データ移行処理（photoをphotosに変換）
+        const migratePhotos = (log) => {
+            if (log.photo && !log.photos) {
+                log.photos = [log.photo];
+                // photoフィールドは削除しない（互換性のため）
+            }
+            return log;
+        };
+
+        state.logs = [...meals.map(migratePhotos), ...meds.map(migratePhotos), ...symptoms.map(migratePhotos)]
+            .sort((a,b) => b.id - a.id);
         this.renderCalendar();
         this.renderTimeline();
     },
@@ -385,9 +398,18 @@ window.app = {
             const el = document.createElement('div'); el.className = `log-card type-${log.type}`;
             const time = new Date(log.id).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
             let html = `<div class="log-meta"><span class="badge">${this.getTypeName(log.type)}</span> ${time}</div>`;
-            
-            if(log.photo) html += `<img src="${URL.createObjectURL(log.photo)}" class="log-img">`;
-            
+
+            // 複数画像の処理（最初の1枚+残り枚数バッジ）
+            const photos = log.photos || (log.photo ? [log.photo] : []);
+            if (photos.length > 0) {
+                html += `<div style="position:relative;">`;
+                html += `<img src="${URL.createObjectURL(photos[0])}" class="log-img">`;
+                if (photos.length > 1) {
+                    html += `<div class="photo-count-badge">+${photos.length - 1}</div>`;
+                }
+                html += `</div>`;
+            }
+
             if(log.type==='meal') {
                 html += `<div><b>${(log.tags||[]).join(', ')}</b></div><div style="color:#555">${log.note||''}</div>`;
             } else if(log.type==='med') {
@@ -416,8 +438,16 @@ window.app = {
                 スナップショットを更新しました
             </div>`;
         }
-        
-        if(log.photo) html += `<img src="${URL.createObjectURL(log.photo)}" style="width:100%;border-radius:8px;margin-bottom:15px;">`;
+
+        // 複数画像の表示（グリッド形式）
+        const photos = log.photos || (log.photo ? [log.photo] : []);
+        if (photos.length > 0) {
+            html += '<div class="detail-photo-grid">';
+            photos.forEach(photo => {
+                html += `<img src="${URL.createObjectURL(photo)}" class="detail-photo">`;
+            });
+            html += '</div>';
+        }
 
         if(log.type==='meal') {
             html += `<h3>食事</h3><p><b>タグ:</b> ${log.tags.join(', ')}</p><p style="background:#f9f9f9;padding:10px;border-radius:4px;">${log.note}</p>`;
@@ -453,8 +483,11 @@ window.app = {
         let html = '';
         if(snap.meals) snap.meals.forEach(m => {
             const time = new Date(m.id).toLocaleString([], {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
-            const img = m.photo ? `<img src="${URL.createObjectURL(m.photo)}" class="mini-thumb">` : `<div class="mini-thumb"></div>`;
-            html += `<div class="mini-log">${img}<div><div>📷 ${time}</div><div style="color:#666">${m.tags.join(',')}</div></div></div>`;
+            // 複数画像対応：最初の1枚のみを表示
+            const photos = m.photos || (m.photo ? [m.photo] : []);
+            const img = photos.length > 0 ? `<img src="${URL.createObjectURL(photos[0])}" class="mini-thumb">` : `<div class="mini-thumb"></div>`;
+            const photoCount = photos.length > 1 ? `(+${photos.length - 1})` : '';
+            html += `<div class="mini-log">${img}<div><div>📷 ${time} ${photoCount}</div><div style="color:#666">${m.tags.join(',')}</div></div></div>`;
         });
         if(snap.meds) snap.meds.forEach(m => {
             const time = new Date(m.id).toLocaleString([], {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
@@ -483,13 +516,16 @@ window.app = {
             log.snapshotUpdatedAt = recalcAt;
         }
 
+        // 写真データの互換性処理
+        const photos = log.photos || (log.photo ? [log.photo] : []);
+
         await DB.put('symptoms', {
             id: log.id,
             type: log.type,
             severity: log.severity,
             parts: log.parts,
             note: log.note,
-            photo: log.photo,
+            photos: photos,
             snapshot: log.snapshot,
             snapshotRecalcAt: log.snapshotRecalcAt,
             snapshotUpdatedAt: log.snapshotUpdatedAt
@@ -531,7 +567,6 @@ window.app = {
         dateInput.value = targetDate.toISOString().slice(0,16);
 
         this.resetForms();
-        state.tempPhoto = null;
 
         // Render Tags if meal
         if(type === 'meal') this.renderMealTags(data ? data.tags : []);
@@ -626,12 +661,12 @@ window.app = {
         const hasDateChange = !!originalId && originalId !== ts;
         const note = document.getElementById('meal-note').value;
         const tags = Array.from(document.querySelectorAll('#meal-tags-container input:checked')).map(c=>c.value);
-        
-        let photo = state.tempPhoto; 
-        if(!photo && id && state.editingLog) photo = state.editingLog.photo;
+
+        // 写真の処理（fillForm()で既にtempPhotosにセット済み）
+        const photos = [...state.tempPhotos];
 
         const recordId = (!originalId || hasDateChange) ? ts : originalId;
-        await DB.put('meals', { id: recordId, type:'meal', photo, tags, note });
+        await DB.put('meals', { id: recordId, type:'meal', photos, tags, note });
         if (hasDateChange) await DB.delete('meals', originalId);
         this.closeInputOverlay();
         this.reloadAll();
@@ -672,9 +707,9 @@ window.app = {
         const severity = document.getElementById('symptom-severity').value;
         const parts = document.getElementById('symptom-parts').value;
         const note = document.getElementById('symptom-note').value;
-        
-        let photo = state.tempPhoto;
-        if(!photo && id && state.editingLog) photo = state.editingLog.photo;
+
+        // 写真の処理（fillForm()で既にtempPhotosにセット済み）
+        const photos = [...state.tempPhotos];
 
         let snapshot = (id && state.editingLog && !hasDateChange) ? state.editingLog.snapshot : null;
         if(!snapshot) {
@@ -688,7 +723,7 @@ window.app = {
         const recordId = (!originalId || hasDateChange) ? ts : originalId;
         await DB.put('symptoms', {
             id: recordId, type:'symptom',
-            severity, parts, note, photo, snapshot
+            severity, parts, note, photos, snapshot
         });
         if (hasDateChange) await DB.delete('symptoms', originalId);
         this.closeInputOverlay();
@@ -805,41 +840,126 @@ window.app = {
     resetForms() {
         document.querySelectorAll('input[type=text], textarea').forEach(e=>e.value='');
         document.querySelectorAll('input[type=checkbox]').forEach(e=>e.checked=false);
-        document.querySelectorAll('img[id$="-preview"]').forEach(e=>{e.src='';});
         document.querySelectorAll('[id$="-preview-area"]').forEach(e=>e.classList.add('hidden'));
+        state.tempPhotos = [];
     },
     fillForm(type, data) {
         if(type==='meal') {
             document.getElementById('meal-note').value = data.note;
-            if(data.photo) this.showPreview('meal-preview', 'meal-preview-area', data.photo);
+            // 既存データの互換性処理（photoからphotosへの移行）
+            if (data.photo && !data.photos) {
+                data.photos = [data.photo];
+            }
+            if (data.photos && data.photos.length > 0) {
+                state.tempPhotos = [...data.photos];
+                this.showPhotoGrid('meal-preview-area', state.tempPhotos, 'meal');
+                this.updatePhotoButtons('meal');
+            }
             // tags are handled in renderMealTags
         } else if(type==='symptom') {
             document.getElementById('symptom-severity').value = data.severity;
             document.getElementById('sev-display').innerText = data.severity;
             document.getElementById('symptom-parts').value = data.parts;
             document.getElementById('symptom-note').value = data.note;
-            if(data.photo) this.showPreview('symptom-preview', 'symptom-preview-area', data.photo);
+            // 既存データの互換性処理
+            if (data.photo && !data.photos) {
+                data.photos = [data.photo];
+            }
+            if (data.photos && data.photos.length > 0) {
+                state.tempPhotos = [...data.photos];
+                this.showPhotoGrid('symptom-preview-area', state.tempPhotos, 'symptom');
+                this.updatePhotoButtons('symptom');
+            }
         }
     },
-    setupPhotoInput(inputId, imgId, areaId) {
+    setupPhotoInput(inputId, type) {
         document.getElementById(inputId).onchange = async (e) => {
-            const file = e.target.files[0];
-            if(file) {
-                const blob = await DB.compress(file);
-                state.tempPhoto = blob;
-                this.showPreview(imgId, areaId, blob);
+            const files = Array.from(e.target.files);
+            const currentCount = state.tempPhotos.length;
+
+            // 4枚制限チェック
+            if (currentCount + files.length > 4) {
+                alert(`写真は最大4枚までです。現在${currentCount}枚添付済みです。`);
+                e.target.value = ''; // input をリセット
+                return;
             }
+
+            // 各ファイルを圧縮して配列に追加
+            try {
+                for (const file of files) {
+                    const blob = await DB.compress(file);
+                    if (blob) {
+                        state.tempPhotos.push(blob);
+                    }
+                }
+            } catch (err) {
+                console.error('画像の処理中にエラーが発生しました:', err);
+                alert('画像の処理に失敗しました。別の画像を選択してください。');
+            }
+
+            this.showPhotoGrid(`${type}-preview-area`, state.tempPhotos, type);
+            this.updatePhotoButtons(type);
+            e.target.value = ''; // 次回の選択のためにリセット
         };
     },
-    showPreview(imgId, areaId, blob) {
-        const img = document.getElementById(imgId);
-        img.src = URL.createObjectURL(blob);
-        document.getElementById(areaId).classList.remove('hidden');
+    showPhotoGrid(containerId, photos, type) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        if (photos.length === 0) {
+            container.classList.add('hidden');
+            return;
+        }
+
+        photos.forEach((blob, index) => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'photo-grid-item';
+
+            const img = document.createElement('img');
+            img.src = URL.createObjectURL(blob);
+            img.className = 'log-img';
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'photo-delete-btn';
+            deleteBtn.textContent = '×';
+            deleteBtn.onclick = (e) => {
+                e.stopPropagation();
+                this.removePhoto(index, type);
+            };
+
+            wrapper.appendChild(img);
+            wrapper.appendChild(deleteBtn);
+            container.appendChild(wrapper);
+        });
+
+        container.classList.remove('hidden');
+    },
+    removePhoto(index, type) {
+        state.tempPhotos.splice(index, 1);
+        this.showPhotoGrid(`${type}-preview-area`, state.tempPhotos, type);
+        this.updatePhotoButtons(type);
+    },
+    updatePhotoButtons(type) {
+        const buttonsContainer = document.querySelector(`#form-${type} .photo-buttons`);
+        const messageContainer = document.getElementById(`${type}-photo-limit-msg`);
+
+        if (!buttonsContainer || !messageContainer) return;
+
+        if (state.tempPhotos.length >= 4) {
+            buttonsContainer.classList.add('hidden');
+            messageContainer.classList.remove('hidden');
+        } else {
+            buttonsContainer.classList.remove('hidden');
+            messageContainer.classList.add('hidden');
+        }
     },
     clearImage(type) {
-        state.tempPhoto = null;
-        if(state.editingLog) state.editingLog.photo = null; 
-        document.getElementById(`${type}-preview-area`).classList.add('hidden');
+        state.tempPhotos = [];
+        const previewArea = document.getElementById(`${type}-preview-area`);
+        if (previewArea) previewArea.classList.add('hidden');
+        this.updatePhotoButtons(type);
     },
     async exportData() {
         const [meals, meds, symptoms, settings] = await Promise.all([

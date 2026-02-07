@@ -193,7 +193,7 @@
 
             <hr style="border:none; border-top:1px solid #eee; margin: 15px 0;">
             <p style="font-size: 0.8rem; text-align: center; color: #888;">
-                Allergy Log (アレログ) v1.2.8
+                Allergy Log (アレログ) v1.3.0
             </p>
         </div>
     </div>
@@ -220,16 +220,21 @@
     <input type="datetime-local" id="record-date">
 
     <div id="form-meal" class="form-section hidden">
-        <label>写真</label>
+        <label>写真（最大4枚）</label>
         <div class="photo-buttons">
             <button class="btn-camera-select" onclick="document.getElementById('meal-cam').click()"><span>📷</span>カメラ</button>
             <button class="btn-camera-select" onclick="document.getElementById('meal-file').click()"><span>📁</span>アルバム</button>
             <input type="file" id="meal-cam" accept="image/*" capture="environment" style="display:none">
             <input type="file" id="meal-file" accept="image/*" style="display:none">
         </div>
-        <div id="meal-preview-area" class="hidden" style="position:relative; margin-bottom:15px;">
-            <img id="meal-preview" class="log-img">
-            <button onclick="app.clearImage('meal')" style="position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.6); color:#fff; border:none; border-radius:4px; padding:5px;">削除</button>
+        <!-- 写真添付上限メッセージ（初期状態: hidden） -->
+        <div id="meal-photo-limit-msg" class="hidden photo-limit-message">
+            📷 写真は4枚まで添付できます。<br>
+            これ以上添付したい場合は、同じ日時で別の記録として登録してください。
+        </div>
+        <!-- プレビューエリア（グリッドレイアウト） -->
+        <div id="meal-preview-area" class="hidden photo-grid-container">
+            <!-- JavaScriptで動的に生成 -->
         </div>
         <label>タグ</label>
         <div id="meal-tags-container"></div>
@@ -254,16 +259,21 @@
         <div style="background:#ffebee; color:#c62828; padding:10px; border-radius:8px; margin-bottom:15px; font-size:0.9rem;">
             ⚠️ <b><span id="symptom-snapshot-notice">過去1日の食事と服薬の履歴も保存します</span></b>
         </div>
-        <label>写真 (任意)</label>
+        <label>写真（最大4枚、任意）</label>
         <div class="photo-buttons">
             <button class="btn-camera-select" onclick="document.getElementById('sym-cam').click()"><span>📷</span>カメラ</button>
             <button class="btn-camera-select" onclick="document.getElementById('sym-file').click()"><span>📁</span>アルバム</button>
             <input type="file" id="sym-cam" accept="image/*" capture="environment" style="display:none">
             <input type="file" id="sym-file" accept="image/*" style="display:none">
         </div>
-        <div id="symptom-preview-area" class="hidden" style="position:relative; margin-bottom:15px;">
-            <img id="symptom-preview" class="log-img">
-            <button onclick="app.clearImage('symptom')" style="position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.6); color:#fff; border:none; border-radius:4px; padding:5px;">削除</button>
+        <!-- 写真添付上限メッセージ（初期状態: hidden） -->
+        <div id="symptom-photo-limit-msg" class="hidden photo-limit-message">
+            📷 写真は4枚まで添付できます。<br>
+            これ以上添付したい場合は、同じ日時で別の記録として登録してください。
+        </div>
+        <!-- プレビューエリア（グリッドレイアウト） -->
+        <div id="symptom-preview-area" class="hidden photo-grid-container">
+            <!-- JavaScriptで動的に生成 -->
         </div>
         <label>重症度: <span id="sev-display" style="font-weight:bold; font-size:1.2rem; color:var(--danger)">3</span></label>
         <div style="display:flex; align-items:center; gap:10px;">
