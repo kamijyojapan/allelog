@@ -138,11 +138,20 @@ function createPdfReport(data) {
   });
 
   // === ヘッダー置換 (サマリー含む) ===
+  const submittedDate = new Date().toLocaleString('ja-JP', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
   body.replaceText('{{ChartId}}', data.chartId || '未設定');
   body.replaceText('{{Name}}', data.patientName || '未設定');
   body.replaceText('{{Month}}', `${data.year}年${data.month}月`);
   body.replaceText('{{Count}}', symptomCount.toString());
   body.replaceText('{{MaxSev}}', maxSev.toString());
+  body.replaceText('{{SubmittedDate}}', submittedDate);
 
   // === データ展開 (時系列用) ===
   let allEvents = [];
