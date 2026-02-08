@@ -19,7 +19,7 @@ function doPost(e) {
 
     return ContentService.createTextOutput(JSON.stringify({
       status: 'queued',
-      message: '1〜2分以内にレポートが作成されます'
+      message: '1分以内にレポートが作成されます'
     })).setMimeType(ContentService.MimeType.JSON);
 
   } catch (err) {
@@ -62,7 +62,7 @@ function recordSuccess(data, pdfUrl) {
   });
 }
 
-// 2. 定期実行用関数（10秒以上経過したファイルを処理）
+// 2. 定期実行用関数（指定秒数以上経過したファイルを処理）
 function processQueue() {
   // ロックを短いタイムアウトで取得（他の実行が進行中なら即座にスキップ）
   const lock = LockService.getScriptLock();
@@ -83,9 +83,10 @@ function processQueue() {
 
     const archiveFolder = DriveApp.getFolderById(ARCHIVE_FOLDER_ID);
     let processedCount = 0;
+    let skippedCount = 0;
     const MAX_FILES_PER_RUN = 5; // 1回の実行で最大5ファイルまで処理
     const now = new Date().getTime();
-    const WAIT_TIME = 10000; // 10秒待機
+    const WAIT_TIME = 0; // ★待機時間（ミリ秒）: 0秒 = 即座に処理 ★
 
     while (files.hasNext() && processedCount < MAX_FILES_PER_RUN) {
       const file = files.next();
@@ -95,9 +96,10 @@ function processQueue() {
       const timestamp = parseInt(fileName.split('_')[0]);
       const fileAge = now - timestamp;
 
-      // 10秒未満のファイルはスキップ（書き込み完了を待つ）
+      // 指定時間未満のファイルはスキップ（書き込み完了を待つ）
       if (fileAge < WAIT_TIME) {
         console.log(`スキップ（作成から${Math.floor(fileAge / 1000)}秒）: ${fileName}`);
+        skippedCount++;
         continue;
       }
 
@@ -105,7 +107,11 @@ function processQueue() {
       let data;
       try {
         data = JSON.parse(content);
+
+        // 処理時間の計測開始
+        const startTime = new Date().getTime();
         const pdfUrl = createPdfReport(data);
+        const processingTime = new Date().getTime() - startTime;
 
         // 成功時の記録処理（共通関数を使用）
         recordSuccess(data, pdfUrl);
@@ -113,15 +119,18 @@ function processQueue() {
         // アーカイブに移動
         file.moveTo(archiveFolder);
         processedCount++;
-        console.log(`処理完了: ${fileName}`);
+
+        // 詳細ログ: ファイル作成から処理完了までの時間
+        const totalTime = Math.floor((new Date().getTime() - timestamp) / 1000);
+        console.log(`✓ 処理完了: ${fileName} | PDF作成時間: ${Math.floor(processingTime/1000)}秒 | 送信から完了まで: ${totalTime}秒`);
       } catch (e) {
-        console.error('Error processing file: ' + fileName, e);
+        console.error('✗ エラー: ' + fileName, e);
         file.setName(fileName + '_ERROR');
       }
     }
 
     if (processedCount > 0) {
-      console.log(`${processedCount}件のファイルを処理しました`);
+      console.log(`==== 処理サマリー: ${processedCount}件処理、${skippedCount}件スキップ ====`);
     }
   } finally {
     lock.releaseLock();
