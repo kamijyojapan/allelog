@@ -5,37 +5,23 @@ const DEST_FOLDER_ID    = '1RmKGcGM1MU5c4eH0-DYuPQyo7-0_7SEO';
 const TEMPLATE_ID       = '1NsTBLu2q3h1z0a7-8Vt4MAaWcOcctIX5QiC41TvIvPk';
 const NOTIFY_EMAIL      = 'kamijyo@keiomed.com';
 
-// 1. アプリからの受信（ハイブリッド方式：即座に処理、失敗時のみキュー）
+// 1. アプリからの受信（キューに保存して即座に返す）
 function doPost(e) {
   try {
     const jsonString = e.postData.contents;
     const data = JSON.parse(jsonString);
 
-    try {
-      // まず即座にPDF作成を試みる
-      const pdfUrl = createPdfReport(data);
+    // キューに保存（ファイル名にタイムスタンプを含める）
+    const timestamp = new Date().getTime();
+    const fileName = `${timestamp}_${data.patientName}.json`;
+    const queueFolder = DriveApp.getFolderById(QUEUE_FOLDER_ID);
+    queueFolder.createFile(fileName, jsonString, MimeType.PLAIN_TEXT);
 
-      // 成功したら記録
-      recordSuccess(data, pdfUrl);
+    return ContentService.createTextOutput(JSON.stringify({
+      status: 'queued',
+      message: '1〜2分以内にレポートが作成されます'
+    })).setMimeType(ContentService.MimeType.JSON);
 
-      return ContentService.createTextOutput(JSON.stringify({
-        status: 'success',
-        pdfUrl: pdfUrl,
-        message: 'レポートが作成されました'
-      })).setMimeType(ContentService.MimeType.JSON);
-
-    } catch (pdfError) {
-      // PDF作成に失敗したらキューに保存（バックアップ処理）
-      console.error('PDF作成エラー（キューに保存）:', pdfError);
-      const fileName = `${new Date().getTime()}_${data.patientName}.json`;
-      const queueFolder = DriveApp.getFolderById(QUEUE_FOLDER_ID);
-      queueFolder.createFile(fileName, jsonString, MimeType.PLAIN_TEXT);
-
-      return ContentService.createTextOutput(JSON.stringify({
-        status: 'queued',
-        message: '処理に時間がかかるため、数分以内に完了します'
-      })).setMimeType(ContentService.MimeType.JSON);
-    }
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({
       status: 'error',
@@ -63,7 +49,7 @@ function recordSuccess(data, pdfUrl) {
   });
 }
 
-// 2. 定期実行用関数（バックアップ処理・負荷軽減版）
+// 2. 定期実行用関数（10秒以上経過したファイルを処理）
 function processQueue() {
   // ロックを短いタイムアウトで取得（他の実行が進行中なら即座にスキップ）
   const lock = LockService.getScriptLock();
@@ -84,10 +70,24 @@ function processQueue() {
 
     const archiveFolder = DriveApp.getFolderById(ARCHIVE_FOLDER_ID);
     let processedCount = 0;
-    const MAX_FILES_PER_RUN = 3; // 1回の実行で最大3ファイルまで処理
+    const MAX_FILES_PER_RUN = 5; // 1回の実行で最大5ファイルまで処理
+    const now = new Date().getTime();
+    const WAIT_TIME = 10000; // 10秒待機
 
     while (files.hasNext() && processedCount < MAX_FILES_PER_RUN) {
       const file = files.next();
+      const fileName = file.getName();
+
+      // ファイル名からタイムスタンプを取得
+      const timestamp = parseInt(fileName.split('_')[0]);
+      const fileAge = now - timestamp;
+
+      // 10秒未満のファイルはスキップ（書き込み完了を待つ）
+      if (fileAge < WAIT_TIME) {
+        console.log(`スキップ（作成から${Math.floor(fileAge / 1000)}秒）: ${fileName}`);
+        continue;
+      }
+
       const content = file.getBlob().getDataAsString();
       let data;
       try {
@@ -100,15 +100,15 @@ function processQueue() {
         // アーカイブに移動
         file.moveTo(archiveFolder);
         processedCount++;
-        console.log(`処理完了: ${file.getName()}`);
+        console.log(`処理完了: ${fileName}`);
       } catch (e) {
-        console.error('Error processing file: ' + file.getName(), e);
-        file.setName(file.getName() + '_ERROR');
+        console.error('Error processing file: ' + fileName, e);
+        file.setName(fileName + '_ERROR');
       }
     }
 
-    if (files.hasNext()) {
-      console.log(`残り ${processedCount}件以上のファイルがあります（次回処理）`);
+    if (processedCount > 0) {
+      console.log(`${processedCount}件のファイルを処理しました`);
     }
   } finally {
     lock.releaseLock();
