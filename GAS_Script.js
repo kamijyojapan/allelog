@@ -31,14 +31,41 @@ function doPost(e) {
   }
 }
 
-// 成功時の通知処理
-function notifySuccess(data, pdfUrl) {
-  MailApp.sendEmail({
-    to: NOTIFY_EMAIL,
-    subject: `【アレログ】${data.patientName}様(ID:${data.chartId})のレポート作成完了`,
-    body: `レポートが作成されました。\nID: ${data.chartId}\n氏名: ${data.patientName}\n対象: ${data.year}年${data.month}月\nPDF: ${pdfUrl}`
-  });
+// レポートシートへの記録
+function recordReport(data, pdfUrl) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('レポート');
+
+  // 送信日時をフォーマット
+  let submittedDate = '-';
+  if (data.submittedAt) {
+    try {
+      const date = new Date(data.submittedAt);
+      submittedDate = date.toLocaleString('ja-JP');
+    } catch (e) {
+      submittedDate = '-';
+    }
+  }
+
+  sheet.appendRow([
+    new Date().toLocaleString('ja-JP'), // 処理完了日時
+    submittedDate,                       // 送信日時
+    data.chartId || '-',
+    data.patientName,
+    `${data.year}年${data.month}月`,
+    pdfUrl,
+    '完了'
+  ]);
 }
+
+// メール通知（一旦不要）
+// function notifySuccess(data, pdfUrl) {
+//   MailApp.sendEmail({
+//     to: NOTIFY_EMAIL,
+//     subject: `【アレログ】${data.patientName}様(ID:${data.chartId})のレポート作成完了`,
+//     body: `レポートが作成されました。\nID: ${data.chartId}\n氏名: ${data.patientName}\n対象: ${data.year}年${data.month}月\nPDF: ${pdfUrl}`
+//   });
+// }
 
 // 2. 定期実行用関数（キュー処理）
 function processQueue() {
@@ -69,7 +96,7 @@ function processQueue() {
         const data = JSON.parse(content);
         const pdfUrl = createPdfReport(data);
 
-        // notifySuccess(data, pdfUrl);  // メール通知は一旦不要
+        recordReport(data, pdfUrl);
         file.moveTo(archiveFolder);
         processedCount++;
 
