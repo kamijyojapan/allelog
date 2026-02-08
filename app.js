@@ -1,6 +1,6 @@
 const DB_NAME = 'AllergyCareDB_V7';
 const DB_VERSION = 2;
-const APP_VERSION = '1.3.8';
+const APP_VERSION = '1.3.9';
 
 // --- DB Helper ---
 const DB = {
@@ -205,10 +205,6 @@ window.app = {
             installBtn.classList.add('hidden');
             debugLog('インストールボタン: 非表示（installed）');
         } else {
-            window.addEventListener('beforeinstallprompt', () => {
-                installBtn.classList.remove('hidden');
-                debugLog('インストールボタン: 表示中');
-            });
             debugLog('インストールボタン: beforeinstallprompt 待機中');
         }
         installBtn.onclick = async () => {
@@ -1123,7 +1119,7 @@ window.app = {
             const resJson = await response.json();
 
             if (resJson.status === 'queued') {
-                alert('送信完了しました。\n1～2分以内に医師用カルテ(PDF)が作成されます。');
+                alert('送信完了しました。\n1～2分以内に医師用レポート(PDF)が作成されます。');
             } else if (resJson.status === 'error') {
                 throw new Error('サーバーエラー: ' + (resJson.message || '不明なエラー'));
             } else {

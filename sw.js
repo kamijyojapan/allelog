@@ -1,13 +1,13 @@
-const CACHE_NAME = 'allergy-log-v27';
+const CACHE_NAME = 'allergy-log-v28';
 const ASSETS = [
-    './',
-    './index.html',
-    './style.css',
-    './app.js',
-    './manifest.json',
-    './favicon.ico',
-    './icon-192.png',
-    './icon-512.png'
+    '/allelog/',
+    '/allelog/index.html',
+    '/allelog/style.css',
+    '/allelog/app.js',
+    '/allelog/manifest.json',
+    '/allelog/favicon.ico',
+    '/allelog/icon-192.png',
+    '/allelog/icon-512.png'
 ];
 
 self.addEventListener('install', (e) => {

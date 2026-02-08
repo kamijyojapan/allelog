@@ -1,5 +1,11 @@
 # 変更履歴 (Changelog)
 
+## [1.3.9] - 2026-02-08
+
+### 修正
+- **PWAインストール（Android対応）**: manifest.json、index.html、sw.jsのパス設定を絶対パスに統一し、AndroidでPWAインストールが正常に動作するように改善
+- **Android Chrome特有の厳格な要件に対応**: idフィールドの追加、Service Workerのscope整合性確保、beforeinstallpromptイベントの正しい処理を実装
+
 ## [1.3.8] - 2026-02-08
 
 ### 改善

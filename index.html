@@ -6,8 +6,8 @@
     <title>Allergy Log</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="stylesheet" href="style.css">
-    <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="manifest" href="/allelog/manifest.json">
+    <link rel="apple-touch-icon" href="/allelog/icon-192.png">
     <meta name="theme-color" content="#2196f3">
 </head>
 <body>
@@ -193,7 +193,7 @@
 
             <hr style="border:none; border-top:1px solid #eee; margin: 15px 0;">
             <p style="font-size: 0.8rem; text-align: center; color: #888;">
-                Allergy Log (アレログ) v1.3.8
+                Allergy Log (アレログ) v1.3.9
             </p>
         </div>
     </div>
@@ -302,13 +302,16 @@
 
 <script>
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./sw.js')
+        navigator.serviceWorker.register('/allelog/sw.js', { scope: '/allelog/' })
             .then(() => { console.log('SW Registered'); if(window.debugLog) window.debugLog('Service Worker 登録: 成功'); })
             .catch(err => { console.error('SW Error:', err); if(window.debugLog) window.debugLog('Service Worker エラー: ' + err.message); });
     }
 
     window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
         window.deferredPrompt = e;
+        const installBtn = document.getElementById('menu-install');
+        if (installBtn) installBtn.classList.remove('hidden');
         console.log('PWA installable');
         if(window.debugLog) window.debugLog('beforeinstallprompt イベント発火');
     });
