@@ -4,7 +4,7 @@
   "id": "/allelog/",
   "description": "食事と病院をスマホでつなぐ、アレルギー症状記録アプリ",
   "scope": "/allelog/",
-  "start_url": "/allelog/",
+  "start_url": "/allelog/index.html", 
   "display": "standalone",
   "background_color": "#f5f7fa",
   "theme_color": "#2196f3",
@@ -14,13 +14,13 @@
       "src": "/allelog/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/allelog/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "maskable"
     }
   ]
 }
