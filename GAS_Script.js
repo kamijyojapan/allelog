@@ -151,13 +151,23 @@ function createPdfReport(data) {
   });
 
   // === ヘッダー置換 (サマリー含む) ===
-  const submittedDate = new Date().toLocaleString('ja-JP', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
+  // 送信日時をフォーマット（app.jsから送信されたタイムスタンプを使用）
+  let submittedDate = '-';
+  if (data.submittedAt) {
+    try {
+      const date = new Date(data.submittedAt);
+      submittedDate = date.toLocaleString('ja-JP', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (e) {
+      console.error('送信日時の解析エラー:', e);
+      submittedDate = '-';
+    }
+  }
 
   body.replaceText('{{ChartId}}', data.chartId || '未設定');
   body.replaceText('{{Name}}', data.patientName || '未設定');
