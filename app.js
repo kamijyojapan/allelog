@@ -1,6 +1,6 @@
 const DB_NAME = 'AllergyCareDB_V7';
 const DB_VERSION = 2;
-const APP_VERSION = '1.3.6';
+const APP_VERSION = '1.3.7';
 
 // --- DB Helper ---
 const DB = {
@@ -1123,9 +1123,11 @@ window.app = {
             const resJson = await response.json();
 
             if (resJson.status === 'success') {
-                alert('送信完了しました。\n医師用カルテ(PDF)が作成されました。');
+                const time = resJson.processingTime ? `（${Math.floor(resJson.processingTime/1000)}秒）` : '';
+                alert(`送信完了しました。\n医師用カルテ(PDF)が作成されました。${time}`);
             } else if (resJson.status === 'queued') {
-                alert('送信を受け付けました。\n1分以内に医師用カルテ(PDF)が作成されます。');
+                const errorInfo = resJson.error ? `\n（理由: ${resJson.error}）` : '';
+                alert(`即座の作成に失敗しました。${errorInfo}\n1分以内にレポートが作成されます。`);
             } else {
                 throw new Error('サーバーエラー: ' + (resJson.message || '不明なエラー'));
             }

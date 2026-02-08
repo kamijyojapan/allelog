@@ -2,7 +2,7 @@
 
 食事と病院をスマホでつなぐ、アレルギー症状記録PWA（Progressive Web App）です。
 
-**Version:** 1.3.6
+**Version:** 1.3.7
 
 <p align="center">
   <img src="icon-192.png" width="120" alt="アレログ Icon">
