@@ -156,16 +156,28 @@ function createPdfReport(data) {
       const cellPhoto = row.getCell(2);
       cellPhoto.setText('');
       cellPhoto.setVerticalAlignment(DocumentApp.VerticalAlignment.TOP);
-      
-      if (item.photo) {
-        try {
-          const base64Data = item.photo.split(',')[1];
-          const blob = Utilities.newBlob(Utilities.base64Decode(base64Data), 'image/jpeg');
-          const img = cellPhoto.insertImage(0, blob);
-          const width = 120;
-          const ratio = width / img.getWidth();
-          img.setWidth(width).setHeight(img.getHeight() * ratio);
-        } catch(e) { cellPhoto.setText('(画像エラー)'); }
+
+      // 複数写真対応（後方互換性のため photo も考慮）
+      const photos = item.photos || (item.photo ? [item.photo] : []);
+      if (photos.length > 0) {
+        let insertIndex = 0;
+        photos.forEach((photoData, idx) => {
+          try {
+            const base64Data = photoData.split(',')[1];
+            const blob = Utilities.newBlob(Utilities.base64Decode(base64Data), 'image/jpeg');
+            const img = cellPhoto.insertImage(insertIndex, blob);
+            const width = 120;
+            const ratio = width / img.getWidth();
+            img.setWidth(width).setHeight(img.getHeight() * ratio);
+            insertIndex = cellPhoto.getNumChildren(); // 次の画像は最後に追加
+            // 画像間に改行を追加（最後の画像以外）
+            if (idx < photos.length - 1) {
+              cellPhoto.insertParagraph(insertIndex, '');
+            }
+          } catch(e) {
+            if (insertIndex === 0) cellPhoto.setText('(画像エラー)');
+          }
+        });
       } else if (item.type === 'med') {
         const meds = item.items ? item.items.map(i => `・${i.name} ${i.count}`).join('\n') : '内容なし';
         cellPhoto.setText(meds);

@@ -1,6 +1,6 @@
 const DB_NAME = 'AllergyCareDB_V7';
 const DB_VERSION = 2;
-const APP_VERSION = '1.3.1';
+const APP_VERSION = '1.3.2';
 
 // --- DB Helper ---
 const DB = {
@@ -1072,24 +1072,41 @@ window.app = {
             };
 
             for (const log of targetLogs) {
-                const photoBase64 = await Utils.blobToBase64(log.photo);
+                // 複数写真対応（後方互換性のため photo も考慮）
+                const photos = log.photos || (log.photo ? [log.photo] : []);
+                const photoBase64Array = [];
+                for (const photo of photos) {
+                    if (photo) {
+                        const base64 = await Utils.blobToBase64(photo);
+                        photoBase64Array.push(base64);
+                    }
+                }
+
                 let snapshotData = null;
 
                 // ★修正点: 食事がなくてもsnapshotがあれば処理するように変更
                 if (log.snapshot) {
                     snapshotData = { meals: [], meds: log.snapshot.meds || [] };
-                    
+
                     if (log.snapshot.meals && log.snapshot.meals.length > 0) {
                         for (const meal of log.snapshot.meals) {
-                            const mealPhoto = await Utils.blobToBase64(meal.photo);
-                            snapshotData.meals.push({ ...meal, photo: mealPhoto });
+                            // 複数写真対応（後方互換性のため photo も考慮）
+                            const mealPhotos = meal.photos || (meal.photo ? [meal.photo] : []);
+                            const mealPhotoBase64Array = [];
+                            for (const photo of mealPhotos) {
+                                if (photo) {
+                                    const base64 = await Utils.blobToBase64(photo);
+                                    mealPhotoBase64Array.push(base64);
+                                }
+                            }
+                            snapshotData.meals.push({ ...meal, photos: mealPhotoBase64Array });
                         }
                     }
                 }
 
                 payload.items.push({
                     ...log,
-                    photo: photoBase64,
+                    photos: photoBase64Array,
                     snapshot: snapshotData
                 });
             }
