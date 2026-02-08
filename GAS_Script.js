@@ -6,77 +6,24 @@ const TEMPLATE_ID       = '1NsTBLu2q3h1z0a7-8Vt4MAaWcOcctIX5QiC41TvIvPk';
 const SPREADSHEET_ID    = '1yxz1Qu54BHdnibSwZCW3A0KUzZdEv4c-lXPFNAvB3E4';
 const NOTIFY_EMAIL      = 'kamijyo@keiomed.com';
 
-// 1. アプリからの受信（ハイブリッド方式：即座にPDF作成を試み、失敗したらキューに保存）
+// 1. アプリからの受信（キューに保存）
 function doPost(e) {
   try {
     const jsonString = e.postData.contents;
     const data = JSON.parse(jsonString);
 
-    // ログ記録: 処理開始
-    writeLog('doPost', data.patientName, '開始', null, null);
+    // キューに保存
+    const timestamp = new Date().getTime();
+    const fileName = `${timestamp}_${data.patientName}.json`;
+    const queueFolder = DriveApp.getFolderById(QUEUE_FOLDER_ID);
+    queueFolder.createFile(fileName, jsonString, MimeType.PLAIN_TEXT);
 
-    try {
-      // ========================================
-      // ★ 即座にPDF作成を試みる ★
-      // ========================================
-      console.log(`[doPost] PDF作成開始: ${data.patientName}`);
-      const overallStartTime = new Date().getTime();
+    return ContentService.createTextOutput(JSON.stringify({
+      status: 'queued',
+      message: '1～2分以内にレポートが作成されます'
+    })).setMimeType(ContentService.MimeType.JSON);
 
-      const pdfUrl = createPdfReport(data);
-
-      const overallTime = new Date().getTime() - overallStartTime;
-      console.log(`[doPost] PDF作成成功: ${overallTime}ms`);
-
-      // 成功時の記録処理
-      recordSuccess(data, pdfUrl);
-
-      // ログ記録: 成功
-      writeLog('doPost', data.patientName, '成功', overallTime, null);
-
-      return ContentService.createTextOutput(JSON.stringify({
-        status: 'success',
-        pdfUrl: pdfUrl,
-        processingTime: overallTime,
-        message: 'レポートが作成されました'
-      })).setMimeType(ContentService.MimeType.JSON);
-
-    } catch (pdfError) {
-      // ========================================
-      // ★ 失敗した場合のみキューに保存 ★
-      // ========================================
-      const errorTime = new Date().getTime();
-      console.error(`[doPost] PDF作成失敗 (${errorTime}): ${pdfError.message}`);
-      console.error(`[doPost] スタックトレース:`, pdfError.stack);
-      console.error(`[doPost] エラー詳細:`, JSON.stringify({
-        name: pdfError.name,
-        message: pdfError.message,
-        fileName: pdfError.fileName,
-        lineNumber: pdfError.lineNumber
-      }));
-
-      // キューに保存（バックアップ処理）
-      const timestamp = new Date().getTime();
-      const fileName = `${timestamp}_${data.patientName}.json`;
-      const queueFolder = DriveApp.getFolderById(QUEUE_FOLDER_ID);
-      queueFolder.createFile(fileName, jsonString, MimeType.PLAIN_TEXT);
-
-      console.log(`[doPost] キューに保存: ${fileName}`);
-
-      // ログ記録: キューに保存
-      writeLog('doPost', data.patientName, 'キュー', null, pdfError.message);
-
-      return ContentService.createTextOutput(JSON.stringify({
-        status: 'queued',
-        message: '1分以内にレポートが作成されます',
-        error: pdfError.message
-      })).setMimeType(ContentService.MimeType.JSON);
-    }
   } catch (err) {
-    console.error(`[doPost] 致命的エラー:`, err);
-
-    // ログ記録: 致命的エラー
-    writeLog('doPost', (err.data && err.data.patientName) || '不明', 'エラー', null, err.toString());
-
     return ContentService.createTextOutput(JSON.stringify({
       status: 'error',
       message: err.toString()
@@ -84,32 +31,8 @@ function doPost(e) {
   }
 }
 
-// 成功時の記録処理（共通化）
-function recordSuccess(data, pdfUrl) {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet = ss.getSheetByName('レポート');
-
-  // 送信日時をフォーマット（ISO形式から日本語形式に変換）
-  let submittedDate = '-';
-  if (data.submittedAt) {
-    try {
-      const date = new Date(data.submittedAt);
-      submittedDate = date.toLocaleString('ja-JP');
-    } catch (e) {
-      console.error('送信日時の解析エラー:', e);
-    }
-  }
-
-  sheet.appendRow([
-    new Date().toLocaleString('ja-JP'), // 処理完了日時
-    submittedDate,                       // 送信日時
-    data.chartId || '-',
-    data.patientName,
-    `${data.year}年${data.month}月`,
-    pdfUrl,
-    '完了'
-  ]);
-
+// 成功時の通知処理
+function notifySuccess(data, pdfUrl) {
   MailApp.sendEmail({
     to: NOTIFY_EMAIL,
     subject: `【アレログ】${data.patientName}様(ID:${data.chartId})のレポート作成完了`,
@@ -117,37 +40,11 @@ function recordSuccess(data, pdfUrl) {
   });
 }
 
-// ログ記録用ヘルパー関数（エラーがメイン処理に影響しないようtry-catchで囲む）
-function writeLog(context, patientName, status, processingTime, errorMessage) {
-  try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const logSheet = ss.getSheetByName('ログ');
-    if (!logSheet) {
-      console.error('ログシートが見つかりません');
-      return;
-    }
-
-    logSheet.appendRow([
-      new Date().toLocaleString('ja-JP'), // 実行日時
-      context,                             // 実行元（doPost/processQueue）
-      patientName,                         // 患者名
-      status,                              // 処理結果（開始/成功/キュー/エラー）
-      processingTime ? `${Math.floor(processingTime/1000)}秒` : '-', // 処理時間
-      errorMessage || '-'                  // エラーメッセージ
-    ]);
-  } catch (e) {
-    // ログ記録失敗はメイン処理に影響させない
-    console.error('ログ記録エラー:', e);
-  }
-}
-
-// 2. 定期実行用関数（指定秒数以上経過したファイルを処理）
+// 2. 定期実行用関数（キュー処理）
 function processQueue() {
-  console.log('[processQueue] トリガー実行開始');
-  // ロックを短いタイムアウトで取得（他の実行が進行中なら即座にスキップ）
+  // ロックを取得（他の実行が進行中なら即座にスキップ）
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(5000)) {
-    console.log('別の処理が実行中のためスキップ');
     return;
   }
 
@@ -155,69 +52,31 @@ function processQueue() {
     const queueFolder = DriveApp.getFolderById(QUEUE_FOLDER_ID);
     const files = queueFolder.getFiles();
 
-    // ファイルがない場合は早期リターン（負荷軽減）
     if (!files.hasNext()) {
-      console.log('キューは空です');
       return;
     }
 
     const archiveFolder = DriveApp.getFolderById(ARCHIVE_FOLDER_ID);
     let processedCount = 0;
-    let skippedCount = 0;
-    const MAX_FILES_PER_RUN = 5; // 1回の実行で最大5ファイルまで処理
-    const now = new Date().getTime();
-    const WAIT_TIME = 0; // ★待機時間（ミリ秒）: 0秒 = 即座に処理 ★
+    const MAX_FILES_PER_RUN = 5;
 
     while (files.hasNext() && processedCount < MAX_FILES_PER_RUN) {
       const file = files.next();
       const fileName = file.getName();
-
-      // ファイル名からタイムスタンプを取得
-      const timestamp = parseInt(fileName.split('_')[0]);
-      const fileAge = now - timestamp;
-
-      // 指定時間未満のファイルはスキップ（書き込み完了を待つ）
-      if (fileAge < WAIT_TIME) {
-        console.log(`スキップ（作成から${Math.floor(fileAge / 1000)}秒）: ${fileName}`);
-        skippedCount++;
-        continue;
-      }
-
       const content = file.getBlob().getDataAsString();
-      let data;
+
       try {
-        data = JSON.parse(content);
-
-        // 処理時間の計測開始
-        const startTime = new Date().getTime();
+        const data = JSON.parse(content);
         const pdfUrl = createPdfReport(data);
-        const processingTime = new Date().getTime() - startTime;
 
-        // 成功時の記録処理（共通関数を使用）
-        recordSuccess(data, pdfUrl);
-
-        // ログ記録: トリガー処理成功
-        writeLog('processQueue', data.patientName, '成功', processingTime, null);
-
-        // アーカイブに移動
+        // notifySuccess(data, pdfUrl);  // メール通知は一旦不要
         file.moveTo(archiveFolder);
         processedCount++;
 
-        // 詳細ログ: ファイル作成から処理完了までの時間
-        const totalTime = Math.floor((new Date().getTime() - timestamp) / 1000);
-        console.log(`✓ 処理完了: ${fileName} | PDF作成時間: ${Math.floor(processingTime/1000)}秒 | 送信から完了まで: ${totalTime}秒`);
       } catch (e) {
-        console.error('✗ エラー: ' + fileName, e);
+        console.error('エラー: ' + fileName, e);
         file.setName(fileName + '_ERROR');
-
-        // ログ記録: トリガー処理失敗
-        const patientName = data ? data.patientName : fileName.split('_')[1]?.replace('.json', '') || '不明';
-        writeLog('processQueue', patientName, 'エラー', null, e.toString());
       }
-    }
-
-    if (processedCount > 0) {
-      console.log(`==== 処理サマリー: ${processedCount}件処理、${skippedCount}件スキップ ====`);
     }
   } finally {
     lock.releaseLock();
@@ -226,28 +85,19 @@ function processQueue() {
 
 // 3. PDF作成ロジック (サマリー集計 & 重症度ハイライト強化版)
 function createPdfReport(data) {
-  console.log(`[createPdf] 開始`);
-  let stepTime = new Date().getTime();
-
-  // ステップ1: フォルダ取得
+  // フォルダ取得
   const rootFolder = DriveApp.getFolderById(DEST_FOLDER_ID);
   const folderName = `${data.patientName}`;
   const folders = rootFolder.getFoldersByName(folderName);
   const patientFolder = folders.hasNext() ? folders.next() : rootFolder.createFolder(folderName);
-  console.log(`[createPdf] フォルダ取得: ${new Date().getTime() - stepTime}ms`);
-  stepTime = new Date().getTime();
 
-  // ステップ2: テンプレートコピー
+  // テンプレートコピー
   const templateFile = DriveApp.getFileById(TEMPLATE_ID);
   const docFile = templateFile.makeCopy(`${data.year}-${data.month}_レポート`, patientFolder);
-  console.log(`[createPdf] テンプレートコピー: ${new Date().getTime() - stepTime}ms`);
-  stepTime = new Date().getTime();
 
-  // ステップ3: ドキュメント開く
+  // ドキュメント開く
   const doc = DocumentApp.openById(docFile.getId());
   const body = doc.getBody();
-  console.log(`[createPdf] ドキュメント開く: ${new Date().getTime() - stepTime}ms`);
-  stepTime = new Date().getTime();
 
   // === サマリー集計 ===
   let symptomCount = 0;
@@ -284,8 +134,6 @@ function createPdfReport(data) {
   body.replaceText('{{Count}}', symptomCount.toString());
   body.replaceText('{{MaxSev}}', maxSev.toString());
   body.replaceText('{{SubmittedDate}}', submittedDate);
-  console.log(`[createPdf] ヘッダー処理: ${new Date().getTime() - stepTime}ms`);
-  stepTime = new Date().getTime();
 
   // === データ展開 (時系列用) ===
   let allEvents = [];
@@ -314,9 +162,6 @@ function createPdfReport(data) {
   // === テーブル処理 ===
   const tables = body.getTables();
   if (tables.length > 0) {
-    console.log(`[createPdf] テーブル処理開始 (イベント数: ${allEvents.length})`);
-    let imageProcessingTime = 0;
-
     const table = tables[0];
 
     // テンプレート行の確保
@@ -357,7 +202,6 @@ function createPdfReport(data) {
       // 複数写真対応（後方互換性のため photo も考慮）
       const photos = item.photos || (item.photo ? [item.photo] : []);
       if (photos.length > 0) {
-        const imageStart = new Date().getTime();
         let insertIndex = 0;
         photos.forEach((photoData, idx) => {
           try {
@@ -376,7 +220,6 @@ function createPdfReport(data) {
             if (insertIndex === 0) cellPhoto.setText('(画像エラー)');
           }
         });
-        imageProcessingTime += (new Date().getTime() - imageStart);
       } else if (item.type === 'med') {
         const meds = item.items ? item.items.map(i => `・${i.name} ${i.count}`).join('\n') : '内容なし';
         cellPhoto.setText(meds);
@@ -419,24 +262,13 @@ function createPdfReport(data) {
     if (templateRow) {
       table.removeRow(1);
     }
-
-    console.log(`[createPdf] 画像処理合計: ${imageProcessingTime}ms`);
-    console.log(`[createPdf] テーブル処理完了: ${new Date().getTime() - stepTime}ms`);
   }
-  stepTime = new Date().getTime();
 
-  // ステップ5: PDF変換
+  // PDF変換
   doc.saveAndClose();
-  console.log(`[createPdf] saveAndClose: ${new Date().getTime() - stepTime}ms`);
-  stepTime = new Date().getTime();
   const pdfBlob = docFile.getAs(MimeType.PDF);
-  console.log(`[createPdf] PDF変換: ${new Date().getTime() - stepTime}ms`);
-  stepTime = new Date().getTime();
-
   const pdfFile = patientFolder.createFile(pdfBlob);
   docFile.setTrashed(true);
-  console.log(`[createPdf] ファイル作成: ${new Date().getTime() - stepTime}ms`);
 
-  console.log(`[createPdf] 完了: ${pdfFile.getUrl()}`);
   return pdfFile.getUrl();
 }

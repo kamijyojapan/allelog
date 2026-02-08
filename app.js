@@ -1122,14 +1122,12 @@ window.app = {
             
             const resJson = await response.json();
 
-            if (resJson.status === 'success') {
-                const time = resJson.processingTime ? `（${Math.floor(resJson.processingTime/1000)}秒）` : '';
-                alert(`送信完了しました。\n医師用カルテ(PDF)が作成されました。${time}`);
-            } else if (resJson.status === 'queued') {
-                const errorInfo = resJson.error ? `\n（理由: ${resJson.error}）` : '';
-                alert(`即座の作成に失敗しました。${errorInfo}\n1分以内にレポートが作成されます。`);
-            } else {
+            if (resJson.status === 'queued') {
+                alert('送信完了しました。\n1～2分以内に医師用カルテ(PDF)が作成されます。');
+            } else if (resJson.status === 'error') {
                 throw new Error('サーバーエラー: ' + (resJson.message || '不明なエラー'));
+            } else {
+                throw new Error('予期しない応答: ' + JSON.stringify(resJson));
             }
 
         } catch (e) {
