@@ -1,6 +1,6 @@
 const DB_NAME = 'AllergyCareDB_V7';
 const DB_VERSION = 2;
-const APP_VERSION = '1.3.4';
+const APP_VERSION = '1.3.5';
 
 // --- DB Helper ---
 const DB = {
@@ -1068,6 +1068,7 @@ window.app = {
                 patientName: patientName,
                 year: year,
                 month: month + 1,
+                submittedAt: new Date().toISOString(),
                 items: []
             };
 

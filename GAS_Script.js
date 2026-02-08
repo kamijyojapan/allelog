@@ -33,8 +33,21 @@ function doPost(e) {
 // 成功時の記録処理（共通化）
 function recordSuccess(data, pdfUrl) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+
+  // 送信日時をフォーマット（ISO形式から日本語形式に変換）
+  let submittedDate = '-';
+  if (data.submittedAt) {
+    try {
+      const date = new Date(data.submittedAt);
+      submittedDate = date.toLocaleString('ja-JP');
+    } catch (e) {
+      console.error('送信日時の解析エラー:', e);
+    }
+  }
+
   sheet.appendRow([
-    new Date().toLocaleString('ja-JP'),
+    new Date().toLocaleString('ja-JP'), // 処理完了日時
+    submittedDate,                       // 送信日時
     data.chartId || '-',
     data.patientName,
     `${data.year}年${data.month}月`,
