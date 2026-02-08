@@ -5,59 +5,110 @@ const DEST_FOLDER_ID    = '1RmKGcGM1MU5c4eH0-DYuPQyo7-0_7SEO';
 const TEMPLATE_ID       = '1NsTBLu2q3h1z0a7-8Vt4MAaWcOcctIX5QiC41TvIvPk';
 const NOTIFY_EMAIL      = 'kamijyo@keiomed.com';
 
-// 1. アプリからの受信
+// 1. アプリからの受信（ハイブリッド方式：即座に処理、失敗時のみキュー）
 function doPost(e) {
   try {
     const jsonString = e.postData.contents;
     const data = JSON.parse(jsonString);
-    const fileName = `${new Date().getTime()}_${data.patientName}.json`;
-    const queueFolder = DriveApp.getFolderById(QUEUE_FOLDER_ID);
-    queueFolder.createFile(fileName, jsonString, MimeType.PLAIN_TEXT);
-    return ContentService.createTextOutput(JSON.stringify({ status: 'queued' })).setMimeType(ContentService.MimeType.JSON);
+
+    try {
+      // まず即座にPDF作成を試みる
+      const pdfUrl = createPdfReport(data);
+
+      // 成功したら記録
+      recordSuccess(data, pdfUrl);
+
+      return ContentService.createTextOutput(JSON.stringify({
+        status: 'success',
+        pdfUrl: pdfUrl,
+        message: 'レポートが作成されました'
+      })).setMimeType(ContentService.MimeType.JSON);
+
+    } catch (pdfError) {
+      // PDF作成に失敗したらキューに保存（バックアップ処理）
+      console.error('PDF作成エラー（キューに保存）:', pdfError);
+      const fileName = `${new Date().getTime()}_${data.patientName}.json`;
+      const queueFolder = DriveApp.getFolderById(QUEUE_FOLDER_ID);
+      queueFolder.createFile(fileName, jsonString, MimeType.PLAIN_TEXT);
+
+      return ContentService.createTextOutput(JSON.stringify({
+        status: 'queued',
+        message: '処理に時間がかかるため、数分以内に完了します'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
   } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: err.toString() })).setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify({
+      status: 'error',
+      message: err.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
   }
 }
 
-// 2. 定期実行用関数
+// 成功時の記録処理（共通化）
+function recordSuccess(data, pdfUrl) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  sheet.appendRow([
+    new Date().toLocaleString('ja-JP'),
+    data.chartId || '-',
+    data.patientName,
+    `${data.year}年${data.month}月`,
+    pdfUrl,
+    '完了'
+  ]);
+
+  MailApp.sendEmail({
+    to: NOTIFY_EMAIL,
+    subject: `【アレログ】${data.patientName}様(ID:${data.chartId})のレポート作成完了`,
+    body: `レポートが作成されました。\nID: ${data.chartId}\n氏名: ${data.patientName}\n対象: ${data.year}年${data.month}月\nPDF: ${pdfUrl}`
+  });
+}
+
+// 2. 定期実行用関数（バックアップ処理・負荷軽減版）
 function processQueue() {
+  // ロックを短いタイムアウトで取得（他の実行が進行中なら即座にスキップ）
   const lock = LockService.getScriptLock();
-  if (!lock.tryLock(30000)) return;
+  if (!lock.tryLock(5000)) {
+    console.log('別の処理が実行中のためスキップ');
+    return;
+  }
 
   try {
     const queueFolder = DriveApp.getFolderById(QUEUE_FOLDER_ID);
-    const archiveFolder = DriveApp.getFolderById(ARCHIVE_FOLDER_ID);
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
     const files = queueFolder.getFiles();
-    
-    while (files.hasNext()) {
+
+    // ファイルがない場合は早期リターン（負荷軽減）
+    if (!files.hasNext()) {
+      console.log('キューは空です');
+      return;
+    }
+
+    const archiveFolder = DriveApp.getFolderById(ARCHIVE_FOLDER_ID);
+    let processedCount = 0;
+    const MAX_FILES_PER_RUN = 3; // 1回の実行で最大3ファイルまで処理
+
+    while (files.hasNext() && processedCount < MAX_FILES_PER_RUN) {
       const file = files.next();
       const content = file.getBlob().getDataAsString();
       let data;
       try {
         data = JSON.parse(content);
         const pdfUrl = createPdfReport(data);
-        
-        sheet.appendRow([
-          new Date().toLocaleString('ja-JP'),
-          data.chartId || '-',
-          data.patientName,
-          `${data.year}年${data.month}月`,
-          pdfUrl, 
-          '完了'
-        ]);
-        
-        MailApp.sendEmail({
-          to: NOTIFY_EMAIL,
-          subject: `【アレログ】${data.patientName}様(ID:${data.chartId})のレポート作成完了`,
-          body: `レポートが作成されました。\nID: ${data.chartId}\n氏名: ${data.patientName}\n対象: ${data.year}年${data.month}月\nPDF: ${pdfUrl}`
-        });
-        
+
+        // 成功時の記録処理（共通関数を使用）
+        recordSuccess(data, pdfUrl);
+
+        // アーカイブに移動
         file.moveTo(archiveFolder);
+        processedCount++;
+        console.log(`処理完了: ${file.getName()}`);
       } catch (e) {
         console.error('Error processing file: ' + file.getName(), e);
         file.setName(file.getName() + '_ERROR');
       }
+    }
+
+    if (files.hasNext()) {
+      console.log(`残り ${processedCount}件以上のファイルがあります（次回処理）`);
     }
   } finally {
     lock.releaseLock();
