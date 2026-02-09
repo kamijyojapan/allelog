@@ -4,11 +4,10 @@ const APP_VERSION = '1.4.0';
 
 // --- Symptom Triggers Definition ---
 const SYMPTOM_TRIGGERS = [
-    { id: 'exercise', label: '運動誘発性', icon: '🏃' },
-    { id: 'stress', label: 'ストレス', icon: '😰' },
-    { id: 'sleep_lack', label: '睡眠不足', icon: '😴' },
-    { id: 'illness', label: '体調不良（風邪など）', icon: '🤒' },
-    { id: 'other', label: 'その他', icon: '❓' }
+    { id: 'exercise', label: '運動' },
+    { id: 'stress', label: 'ストレス' },
+    { id: 'sleep_lack', label: '睡眠不足' },
+    { id: 'illness', label: '体調不良（風邪など）' }
 ];
 
 // --- DB Helper ---
@@ -465,7 +464,7 @@ window.app = {
             if (log.triggers && log.triggers.length > 0) {
                 const triggerLabels = log.triggers.map(id => {
                     const t = SYMPTOM_TRIGGERS.find(x => x.id === id);
-                    return t ? `${t.icon} ${t.label}` : id;
+                    return t ? t.label : id;
                 }).join(', ');
                 html += `<p><b>誘因:</b> ${triggerLabels}</p>`;
             }
@@ -633,7 +632,7 @@ window.app = {
             const isChecked = selectedTriggers.includes(trigger.id) ? 'checked' : '';
             label.innerHTML = `
                 <input type="checkbox" value="${trigger.id}" ${isChecked}>
-                ${trigger.icon} ${trigger.label}
+                ${trigger.label}
             `;
             container.appendChild(label);
         });

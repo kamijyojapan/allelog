@@ -263,11 +263,10 @@ function createPdfReport(data) {
          let triggersText = '';
          if (item.triggers && item.triggers.length > 0) {
              const triggerLabels = {
-                 'exercise': '運動誘発性',
+                 'exercise': '運動',
                  'stress': 'ストレス',
                  'sleep_lack': '睡眠不足',
-                 'illness': '体調不良',
-                 'other': 'その他'
+                 'illness': '体調不良'
              };
              triggersText = item.triggers.map(id => triggerLabels[id] || id).join(', ');
          }
