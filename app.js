@@ -1,6 +1,6 @@
 const DB_NAME = 'AllergyCareDB_V7';
 const DB_VERSION = 2;
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.4.1';
 
 // --- Symptom Triggers Definition ---
 const SYMPTOM_TRIGGERS = [

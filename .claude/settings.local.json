@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(powershell -Command \"Set-Clipboard -Value \\(Get-Content ''c:\\\\Users\\\\kamij\\\\Dropbox\\\\WebApp\\\\FAST\\\\allelog\\\\GAS_Script.js'' -Raw\\)\")"
     ]
   }
 }
