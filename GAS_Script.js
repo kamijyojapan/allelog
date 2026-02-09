@@ -1,3 +1,12 @@
+/**
+ * アレログ GASスクリプト
+ * Version: 1.4.0
+ * Last Updated: 2026-02-09
+ *
+ * 変更履歴:
+ * - v1.4.0 (2026-02-09): 症状記録に誘因情報を追加（運動、ストレス、睡眠不足、体調不良）
+ */
+
 // --- 設定エリア (IDはご自身のものを維持してください) ---
 const QUEUE_FOLDER_ID   = '16immG5iIwbYEhrfgrFR0PkK_IBgKbTdo';
 const ARCHIVE_FOLDER_ID = '1LEoGEiWsXlXYE5OVODoKF4WBz0rJLjFo';
