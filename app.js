@@ -1,6 +1,15 @@
 const DB_NAME = 'AllergyCareDB_V7';
 const DB_VERSION = 2;
-const APP_VERSION = '1.3.9';
+const APP_VERSION = '1.4.0';
+
+// --- Symptom Triggers Definition ---
+const SYMPTOM_TRIGGERS = [
+    { id: 'exercise', label: '運動誘発性', icon: '🏃' },
+    { id: 'stress', label: 'ストレス', icon: '😰' },
+    { id: 'sleep_lack', label: '睡眠不足', icon: '😴' },
+    { id: 'illness', label: '体調不良（風邪など）', icon: '🤒' },
+    { id: 'other', label: 'その他', icon: '❓' }
+];
 
 // --- DB Helper ---
 const DB = {
@@ -451,7 +460,16 @@ window.app = {
             html += `<h3>服薬</h3><ul style="padding-left:20px;">${(log.items||[]).map(i=>`<li>${i.name} : <b>${i.count}錠</b></li>`).join('')}</ul>`;
         } else if(log.type==='symptom') {
             html += `<h3 style="color:var(--danger)">症状 Lv.${log.severity}</h3>`;
-            html += `<p><b>部位:</b> ${log.parts}</p><p><b>詳細:</b> ${log.note}</p>`;
+            html += `<p><b>部位:</b> ${log.parts}</p>`;
+            // 誘因・状況の表示
+            if (log.triggers && log.triggers.length > 0) {
+                const triggerLabels = log.triggers.map(id => {
+                    const t = SYMPTOM_TRIGGERS.find(x => x.id === id);
+                    return t ? `${t.icon} ${t.label}` : id;
+                }).join(', ');
+                html += `<p><b>誘因:</b> ${triggerLabels}</p>`;
+            }
+            html += `<p><b>詳細:</b> ${log.note}</p>`;
             
             if(log.snapshot) {
                 const mealsCount = log.snapshot.meals ? log.snapshot.meals.length : 0;
@@ -567,6 +585,9 @@ window.app = {
         // Render Tags if meal
         if(type === 'meal') this.renderMealTags(data ? data.tags : []);
 
+        // Render Triggers if symptom
+        if(type === 'symptom') this.renderTriggerCheckboxes(data ? data.triggers : []);
+
         if(isEdit) this.fillForm(type, data);
         if(type === 'med') await this.renderMedList(data ? data.items : null);
         
@@ -599,6 +620,22 @@ window.app = {
             });
             section.appendChild(grid);
             container.appendChild(section);
+        });
+    },
+
+    renderTriggerCheckboxes(selectedTriggers = []) {
+        const container = document.getElementById('symptom-triggers-container');
+        if (!container) return;
+
+        container.innerHTML = '';
+        SYMPTOM_TRIGGERS.forEach(trigger => {
+            const label = document.createElement('label');
+            const isChecked = selectedTriggers.includes(trigger.id) ? 'checked' : '';
+            label.innerHTML = `
+                <input type="checkbox" value="${trigger.id}" ${isChecked}>
+                ${trigger.icon} ${trigger.label}
+            `;
+            container.appendChild(label);
         });
     },
 
@@ -704,6 +741,11 @@ window.app = {
         const parts = document.getElementById('symptom-parts').value;
         const note = document.getElementById('symptom-note').value;
 
+        // 誘因・状況の取得
+        const triggers = Array.from(
+            document.querySelectorAll('#symptom-triggers-container input:checked')
+        ).map(c => c.value);
+
         // 写真の処理（fillForm()で既にtempPhotosにセット済み）
         const photos = [...state.tempPhotos];
 
@@ -719,7 +761,7 @@ window.app = {
         const recordId = (!originalId || hasDateChange) ? ts : originalId;
         await DB.put('symptoms', {
             id: recordId, type:'symptom',
-            severity, parts, note, photos, snapshot
+            severity, parts, note, photos, triggers, snapshot
         });
         if (hasDateChange) await DB.delete('symptoms', originalId);
         this.closeInputOverlay();
@@ -874,6 +916,8 @@ window.app = {
             document.getElementById('sev-display').innerText = data.severity;
             document.getElementById('symptom-parts').value = data.parts;
             document.getElementById('symptom-note').value = data.note;
+            // 誘因・状況の復元
+            this.renderTriggerCheckboxes(data.triggers || []);
             // 既存データの互換性処理
             if (data.photo && !data.photos) {
                 data.photos = [data.photo];

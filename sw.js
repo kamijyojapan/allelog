@@ -1,4 +1,4 @@
-const CACHE_NAME = 'allergy-log-v29';
+const CACHE_NAME = 'allergy-log-v30';
 const ASSETS = [
     '/allelog/',
     '/allelog/index.html',

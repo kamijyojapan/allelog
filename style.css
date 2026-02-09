@@ -312,3 +312,35 @@ label { font-weight: bold; display: block; margin-bottom: 5px; font-size: 0.9rem
     aspect-ratio: auto;
     max-height: 300px;
 }
+
+/* 誘因チェックボックスのスタイル */
+.trigger-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.trigger-grid label {
+    background: #fff;
+    border: 1px solid #ddd;
+    padding: 8px 12px;
+    border-radius: 20px;
+    font-weight: normal;
+    font-size: 0.85rem;
+    cursor: pointer;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    transition: all 0.2s;
+}
+
+.trigger-grid label:has(input:checked) {
+    background: #fff3e0;
+    border-color: #ff9800;
+    color: #e65100;
+}
+
+.trigger-grid input {
+    margin-right: 6px;
+}

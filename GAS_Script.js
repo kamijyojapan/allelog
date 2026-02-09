@@ -259,7 +259,21 @@ function createPdfReport(data) {
          const tags = item.tags ? item.tags.join(', ') : '';
          detailText = `${tags ? '【' + tags + '】\n' : ''}${item.note || ''}`;
       } else if(item.type === 'symptom') {
-         detailText = `部位: ${item.parts || '-'}\n状況: ${item.note || ''}`;
+         // 誘因情報の変換
+         let triggersText = '';
+         if (item.triggers && item.triggers.length > 0) {
+             const triggerLabels = {
+                 'exercise': '運動誘発性',
+                 'stress': 'ストレス',
+                 'sleep_lack': '睡眠不足',
+                 'illness': '体調不良',
+                 'other': 'その他'
+             };
+             triggersText = item.triggers.map(id => triggerLabels[id] || id).join(', ');
+         }
+         detailText = `部位: ${item.parts || '-'}`;
+         if (triggersText) detailText += `\n誘因: ${triggersText}`;
+         detailText += `\n状況: ${item.note || ''}`;
       }
       const cellDetail = row.getCell(3);
       cellDetail.setText(detailText);
