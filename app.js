@@ -1,6 +1,6 @@
 const DB_NAME = 'AllergyCareDB_V7';
 const DB_VERSION = 2;
-const APP_VERSION = '2.1.0';
+const APP_VERSION = '2.0.0';
 
 // --- Symptom Triggers Definition ---
 const SYMPTOM_TRIGGERS = [
@@ -185,7 +185,6 @@ window.app = {
         document.getElementById('next-month').onclick = () => this.changeMonth(1);
         document.getElementById('btn-today').onclick = () => this.goHome();
         document.getElementById('btn-doctor').onclick = () => this.toggleDoctorMode();
-        document.getElementById('btn-send-server').onclick = () => this.sendToLocalServer();
         document.getElementById('btn-send-data').onclick = () => this.sendDoctorData();
         
         // Menu Listeners
@@ -298,14 +297,12 @@ window.app = {
     async toggleDoctorMode() {
         state.isDoctorMode = !state.isDoctorMode;
         const btn = document.getElementById('btn-doctor');
-        const sendServerBtn = document.getElementById('btn-send-server');
         const sendBtn = document.getElementById('btn-send-data');
 
         if(state.isDoctorMode) {
             btn.classList.add('active');
-            sendServerBtn.classList.remove('hidden');
             sendBtn.classList.remove('hidden');
-            
+
             // 初回のみ注意表示
             const db = await DB.open();
             const req = db.transaction('settings').objectStore('settings').get('doctor_notice_shown');
@@ -317,10 +314,9 @@ window.app = {
             };
         } else {
             btn.classList.remove('active');
-            sendServerBtn.classList.add('hidden');
             sendBtn.classList.add('hidden');
         }
-        
+
         // カレンダーとタイムラインを再描画
         this.renderCalendar();
         this.renderTimeline();
@@ -1311,245 +1307,6 @@ ${JSON.stringify(payload, null, 2)}
     // ▲▲ v2.0.0: HTML埋め込み型レポート生成機能 ここまで ▲▲
 
     // ▼▼ v2.0.0: ローカルサーバーへの直接送信機能 ▼▼
-    async sendToLocalServer() {
-        let chartId = document.getElementById('setting-chart-id').value || localStorage.getItem('allelog_chart_id') || '';
-        let patientName = document.getElementById('setting-patient-name').value || localStorage.getItem('allelog_patient_name') || '';
-        let serverIP = document.getElementById('setting-server-ip').value || localStorage.getItem('allelog_server_ip') || '';
-
-        if (!serverIP) {
-            serverIP = prompt('PCのIPアドレスを入力してください\n（例: 192.168.1.100）', serverIP);
-            if (serverIP === null) return;
-            localStorage.setItem('allelog_server_ip', serverIP);
-            document.getElementById('setting-server-ip').value = serverIP;
-        }
-
-        if (!chartId) {
-            chartId = prompt('カルテIDを入力してください', chartId);
-            if (chartId === null) return;
-        }
-        if (!patientName) {
-            patientName = prompt('患者氏名を入力してください', patientName);
-            if (patientName === null) return;
-        }
-
-        if (!confirm(`サーバーに送信しますか？\n\nサーバー: ${serverIP}:8080\nID: ${chartId}\n氏名: ${patientName}`)) return;
-
-        localStorage.setItem('allelog_chart_id', chartId);
-        localStorage.setItem('allelog_patient_name', patientName);
-
-        document.getElementById('loading-overlay').classList.remove('hidden');
-
-        try {
-            const year = state.currentDate.getFullYear();
-            const month = state.currentDate.getMonth();
-
-            const targetLogs = state.logs.filter(l => {
-                const d = new Date(l.id);
-                return l.type === 'symptom' && d.getFullYear() === year && d.getMonth() === month;
-            });
-
-            if (targetLogs.length === 0) throw new Error('送信対象のデータがありません');
-
-            // payload作成（sendDoctorDataと同じロジック）
-            const payload = {
-                chartId: chartId,
-                patientName: patientName,
-                year: year,
-                month: month + 1,
-                submittedAt: new Date().toISOString(),
-                items: []
-            };
-
-            for (const log of targetLogs) {
-                const photos = log.photos || (log.photo ? [log.photo] : []);
-                const photoBase64Array = [];
-                for (const photo of photos) {
-                    if (photo) {
-                        const base64 = await Utils.blobToBase64(photo);
-                        photoBase64Array.push(base64);
-                    }
-                }
-
-                let snapshotData = null;
-                if (log.snapshot) {
-                    snapshotData = { meals: [], meds: log.snapshot.meds || [] };
-                    if (log.snapshot.meals && log.snapshot.meals.length > 0) {
-                        for (const meal of log.snapshot.meals) {
-                            const mealPhotos = meal.photos || (meal.photo ? [meal.photo] : []);
-                            const mealPhotoBase64Array = [];
-                            for (const photo of mealPhotos) {
-                                if (photo) {
-                                    const base64 = await Utils.blobToBase64(photo);
-                                    mealPhotoBase64Array.push(base64);
-                                }
-                            }
-                            snapshotData.meals.push({ ...meal, photos: mealPhotoBase64Array });
-                        }
-                    }
-                }
-
-                payload.items.push({
-                    ...log,
-                    photos: photoBase64Array,
-                    snapshot: snapshotData
-                });
-            }
-
-            // HTML生成（sendDoctorDataと同じ）
-            const triggerLabels = {
-                'exercise': '運動',
-                'stress': 'ストレス',
-                'sleep_lack': '睡眠不足',
-                'illness': '体調不良'
-            };
-
-            const htmlContent = `<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>アレルギー症状記録 - ${patientName}</title>
-<style>
-  :root { --primary: #2196f3; --bg: #f5f7fa; --border: #e0e0e0; --text: #333; }
-  body { font-family: sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; color: var(--text); background: var(--bg); }
-  h1 { border-bottom: 3px solid var(--primary); padding-bottom: 15px; color: var(--primary); font-size: 1.8rem; }
-  .meta { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-  .meta-row { display: flex; gap: 30px; flex-wrap: wrap; }
-  .meta-item { flex: 1; min-width: 200px; }
-  .meta-label { font-size: 0.85rem; color: #666; margin-bottom: 5px; }
-  .meta-value { font-weight: bold; font-size: 1.1rem; }
-  .log { border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 20px; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-  .log-head { display: flex; justify-content: space-between; align-items: center; background: #fafafa; padding: 10px; margin: -10px -10px 15px -10px; border-radius: 8px 8px 0 0; }
-  .log-date { font-weight: bold; font-size: 1rem; color: #555; }
-  .badge { background: #e53935; color: white; padding: 4px 10px; border-radius: 16px; font-weight: bold; font-size: 0.9rem; }
-  .log-section { margin-bottom: 12px; }
-  .log-label { font-size: 0.85rem; color: #666; margin-bottom: 4px; }
-  .log-value { font-size: 1rem; line-height: 1.6; white-space: pre-wrap; }
-  .snapshot { background: #f9f9f9; padding: 15px; margin-top: 15px; border-radius: 6px; border-left: 4px solid #4caf50; }
-  .snapshot-title { font-weight: bold; color: #4caf50; margin-bottom: 8px; font-size: 0.9rem; }
-  .snapshot-item { margin-bottom: 8px; font-size: 0.9rem; }
-  .photos { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
-  .photos img { width: 150px; height: 150px; object-fit: cover; border-radius: 6px; border: 2px solid var(--border); cursor: zoom-in; transition: 0.2s; }
-  .photos img:hover { border-color: var(--primary); transform: scale(1.05); }
-  .trigger-tag { display: inline-block; background: #fff3e0; color: #e65100; padding: 3px 8px; border-radius: 4px; font-size: 0.85rem; margin-right: 5px; }
-  @media print { body { background: white; } .log { page-break-inside: avoid; } }
-</style>
-</head>
-<body>
-  <h1>🏥 アレルギー症状記録レポート</h1>
-  <div class="meta">
-    <div class="meta-row">
-      <div class="meta-item">
-        <div class="meta-label">患者氏名</div>
-        <div class="meta-value">${patientName}</div>
-      </div>
-      <div class="meta-item">
-        <div class="meta-label">カルテID</div>
-        <div class="meta-value">${chartId}</div>
-      </div>
-      <div class="meta-item">
-        <div class="meta-label">対象期間</div>
-        <div class="meta-value">${year}年${month + 1}月</div>
-      </div>
-      <div class="meta-item">
-        <div class="meta-label">作成日時</div>
-        <div class="meta-value">${new Date().toLocaleString('ja-JP')}</div>
-      </div>
-    </div>
-  </div>
-
-  ${payload.items.map(item => {
-    const date = new Date(item.id);
-    const triggersHtml = (item.triggers || []).map(t =>
-      `<span class="trigger-tag">${triggerLabels[t] || t}</span>`
-    ).join('');
-
-    let snapshotHtml = '';
-    if (item.snapshot) {
-      const mealsHtml = (item.snapshot.meals || []).map(m =>
-        `<div class="snapshot-item">🍽️ ${m.tags.join(', ')}</div>`
-      ).join('');
-      const medsHtml = (item.snapshot.meds || []).map(m =>
-        `<div class="snapshot-item">💊 ${m.items.map(i => `${i.name}(${i.count})`).join(', ')}</div>`
-      ).join('');
-
-      if (mealsHtml || medsHtml) {
-        snapshotHtml = `<div class="snapshot">
-          <div class="snapshot-title">📎 症状発生前の記録（自動スナップショット）</div>
-          ${mealsHtml}
-          ${medsHtml}
-        </div>`;
-      }
-    }
-
-    return `<div class="log">
-      <div class="log-head">
-        <span class="log-date">${date.toLocaleString('ja-JP')}</span>
-        <span class="badge">重症度 Lv.${item.severity}</span>
-      </div>
-      <div class="log-section">
-        <div class="log-label">部位</div>
-        <div class="log-value">${item.parts || '-'}</div>
-      </div>
-      <div class="log-section">
-        <div class="log-label">誘因・状況</div>
-        <div class="log-value">${triggersHtml || '-'}</div>
-      </div>
-      <div class="log-section">
-        <div class="log-label">詳細メモ</div>
-        <div class="log-value">${item.note || '-'}</div>
-      </div>
-      ${snapshotHtml}
-      <div class="photos">
-        ${item.photos.map(p => `<img src="${p}" onclick="window.open(this.src)" alt="症状写真">`).join('')}
-      </div>
-    </div>`;
-  }).join('')}
-
-  <script id="raw-data" type="application/json">
-${JSON.stringify(payload, null, 2)}
-  <\/script>
-</body>
-</html>`;
-
-            // ファイル名生成
-            const now = new Date();
-            const timestamp = now.toISOString().replace(/[-:T]/g, '').slice(0, 14);
-            const fileName = `アレログ_${patientName}_${year}年${month + 1}月_${timestamp}.html`;
-
-            // サーバーに送信
-            const serverUrl = `http://${serverIP}:8080/upload`;
-            const response = await fetch(serverUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    fileName: fileName,
-                    content: htmlContent
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error(`サーバーエラー: ${response.status}`);
-            }
-
-            const result = await response.json();
-            alert(`✅ サーバーに送信完了しました！\n\nファイル名: ${result.fileName}\n\nPCのマネージャー画面で確認できます。`);
-
-        } catch (e) {
-            console.error(e);
-            if (e.message.includes('Failed to fetch')) {
-                alert('❌ サーバーに接続できません。\n\n確認事項:\n1. PCでサーバーが起動しているか\n2. IPアドレスが正しいか\n3. 同じWi-Fiに接続しているか');
-            } else {
-                alert('送信失敗: ' + e.message);
-            }
-        } finally {
-            document.getElementById('loading-overlay').classList.add('hidden');
-        }
-    },
-    // ▲▲ v2.0.0: ローカルサーバーへの直接送信機能 ここまで ▲▲
-
     isSameDay(d1, d2) {
         return d1.getFullYear()===d2.getFullYear() && d1.getMonth()===d2.getMonth() && d1.getDate()===d2.getDate();
     }
