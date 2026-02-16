@@ -390,7 +390,7 @@
     fileInput.onchange = (e) => handleFiles(e.target.files);
     searchBox.oninput = renderSidebar;
 
-    // ファイル処理
+    // ファイル処理（データマージロジック：最新優先＋欠損補完）
     async function handleFiles(files) {
         for (const file of files) {
             if (!file.name.endsWith('.html')) continue;
@@ -411,8 +411,8 @@
                     );
 
                     if (existingIndex >= 0) {
-                        // 既存データを上書き
-                        reports[existingIndex] = json;
+                        // 既存データとマージ（最新優先＋欠損補完）
+                        reports[existingIndex] = mergeReports(reports[existingIndex], json);
                     } else {
                         reports.push(json);
                     }
@@ -423,6 +423,49 @@
             }
         }
         renderSidebar();
+    }
+
+    // レポートマージ関数：最新ファイル優先、欠損データは古いファイルから補完
+    function mergeReports(existing, incoming) {
+        // submittedAt で新旧判定（新しい方を基準とする）
+        const existingTime = new Date(existing.submittedAt).getTime();
+        const incomingTime = new Date(incoming.submittedAt).getTime();
+
+        let base, supplement;
+        if (incomingTime >= existingTime) {
+            // 新しいファイルを基準、古いファイルで補完
+            base = incoming;
+            supplement = existing;
+        } else {
+            // 既存が新しい場合は、既存を基準、新規ファイルで補完
+            base = existing;
+            supplement = incoming;
+        }
+
+        // items配列のマージ（IDベース）
+        const mergedItemsMap = new Map();
+
+        // 基準ファイルのデータを優先的に格納
+        base.items.forEach(item => {
+            mergedItemsMap.set(item.id, item);
+        });
+
+        // 補完ファイルから、基準にないデータのみ追加（欠損補完）
+        supplement.items.forEach(item => {
+            if (!mergedItemsMap.has(item.id)) {
+                mergedItemsMap.set(item.id, item);
+            }
+        });
+
+        // IDでソート（時系列順）
+        const mergedItems = Array.from(mergedItemsMap.values())
+            .sort((a, b) => b.id - a.id); // 新しい順
+
+        return {
+            ...base,
+            items: mergedItems,
+            _mergedFrom: `${base.submittedAt} (base) + ${supplement.submittedAt} (補完)`
+        };
     }
 
     // サイドバー描画

@@ -1268,8 +1268,10 @@ ${JSON.stringify(payload, null, 2)}
 </body>
 </html>`;
 
-            // HTMLファイル生成
-            const fileName = `アレログ_${patientName}_${year}年${month + 1}月_${new Date().toISOString().slice(0, 10)}.html`;
+            // HTMLファイル生成（時分秒まで含めて同日の複数送信を区別可能に）
+            const now = new Date();
+            const timestamp = now.toISOString().replace(/[-:T]/g, '').slice(0, 14); // YYYYMMDDHHmmss
+            const fileName = `アレログ_${patientName}_${year}年${month + 1}月_${timestamp}.html`;
             const blob = new Blob([htmlContent], { type: 'text/html' });
             const file = new File([blob], fileName, { type: 'text/html' });
 
@@ -1281,7 +1283,7 @@ ${JSON.stringify(payload, null, 2)}
                     text: `${patientName}様（${year}年${month + 1}月分）`,
                     files: [file]
                 });
-                alert('レポートを共有しました。\nPCでアレログ・マネージャーを開き、\n受け取ったHTMLファイルをドラッグ&ドロップしてください。');
+                alert('レポートを共有しました。\n\n【推奨】Bluetooth・Nearby Share等でPCに直接送信\n→PCでアレログ・マネージャーを開き、\n受け取ったHTMLファイルをドラッグ&ドロップしてください。');
             } else {
                 // ダウンロード（PC）
                 const url = URL.createObjectURL(blob);
