@@ -1,6 +1,6 @@
 {
   "name": "allelog",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "アレルギー症状記録PWA",
   "scripts": {
     "start": "node server.js"
