@@ -1,3 +1,16 @@
+/**
+ * ⚠️ このファイルは v2.0.0 以降使用されません
+ *
+ * アレログはv2.0.0で「HTML埋め込み型レポート生成」方式に移行しました。
+ * このGASスクリプトは過去のバージョン（v1.x）で使用していたサーバー側処理です。
+ *
+ * 参考・アーカイブ用として残していますが、新規デプロイは不要です。
+ *
+ * 履歴:
+ * - v1.0.0 ~ v1.4.1: GASサーバーでPDFレポート作成
+ * - v2.0.0以降: クライアント側でHTMLレポート生成、サーバー不要
+ */
+
 // --- 設定エリア (IDはご自身のものを維持してください) ---
 const QUEUE_FOLDER_ID   = '16immG5iIwbYEhrfgrFR0PkK_IBgKbTdo';
 const ARCHIVE_FOLDER_ID = '1LEoGEiWsXlXYE5OVODoKF4WBz0rJLjFo';

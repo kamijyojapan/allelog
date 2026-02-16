@@ -1,6 +1,6 @@
 const DB_NAME = 'AllergyCareDB_V7';
 const DB_VERSION = 2;
-const APP_VERSION = '1.4.1';
+const APP_VERSION = '2.0.0';
 
 // --- Symptom Triggers Definition ---
 const SYMPTOM_TRIGGERS = [
@@ -1065,7 +1065,7 @@ window.app = {
         if(el) el.classList.add('active');
     },
 
-    // ▼▼ 修正: データ送信ロジック (スナップショット処理の安全性向上版) ▼▼
+    // ▼▼ v2.0.0: HTML埋め込み型レポート生成機能 ▼▼
     async sendDoctorData() {
         let chartId = document.getElementById('setting-chart-id').value || localStorage.getItem('allelog_chart_id') || '';
         let patientName = document.getElementById('setting-patient-name').value || localStorage.getItem('allelog_patient_name') || '';
@@ -1079,11 +1079,11 @@ window.app = {
             if (patientName === null) return;
         }
 
-        if (!confirm(`${state.currentDate.getMonth() + 1}月分のデータを送信しますか？\nID: ${chartId}\n氏名: ${patientName}`)) return;
+        if (!confirm(`${state.currentDate.getMonth() + 1}月分のレポートを作成しますか？\nID: ${chartId}\n氏名: ${patientName}`)) return;
 
         localStorage.setItem('allelog_chart_id', chartId);
         localStorage.setItem('allelog_patient_name', patientName);
-        
+
         const idInput = document.getElementById('setting-chart-id');
         const nameInput = document.getElementById('setting-patient-name');
         if (idInput) idInput.value = chartId;
@@ -1100,7 +1100,7 @@ window.app = {
                 return l.type === 'symptom' && d.getFullYear() === year && d.getMonth() === month;
             });
 
-            if (targetLogs.length === 0) throw new Error('送信対象のデータがありません');
+            if (targetLogs.length === 0) throw new Error('レポート対象のデータがありません');
 
             const payload = {
                 chartId: chartId,
@@ -1124,7 +1124,6 @@ window.app = {
 
                 let snapshotData = null;
 
-                // ★修正点: 食事がなくてもsnapshotがあれば処理するように変更
                 if (log.snapshot) {
                     snapshotData = { meals: [], meds: log.snapshot.meds || [] };
 
@@ -1151,32 +1150,159 @@ window.app = {
                 });
             }
 
-            // ★ GASのウェブアプリURL (変更なし) ★
-            const SERVER_URL = 'https://script.google.com/macros/s/AKfycbzYbK0uLmOoPhijc30JvUradBV30HMGxXHmaPF22RZrxy_ZS4_fgVfut3Ne6UMsZk-8/exec'; 
-            
-            const response = await fetch(SERVER_URL, {
-                method: 'POST',
-                body: JSON.stringify(payload)
-            });
-            
-            const resJson = await response.json();
+            // 誘因ラベルマッピング
+            const triggerLabels = {
+                'exercise': '運動',
+                'stress': 'ストレス',
+                'sleep_lack': '睡眠不足',
+                'illness': '体調不良'
+            };
 
-            if (resJson.status === 'queued') {
-                alert('送信完了しました。\n1～2分以内に医師用レポート(PDF)が作成されます。');
-            } else if (resJson.status === 'error') {
-                throw new Error('サーバーエラー: ' + (resJson.message || '不明なエラー'));
+            // HTML生成
+            const htmlContent = `<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>アレルギー症状記録 - ${patientName}</title>
+<style>
+  :root { --primary: #2196f3; --bg: #f5f7fa; --border: #e0e0e0; --text: #333; }
+  body { font-family: sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; color: var(--text); background: var(--bg); }
+  h1 { border-bottom: 3px solid var(--primary); padding-bottom: 15px; color: var(--primary); font-size: 1.8rem; }
+  .meta { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+  .meta-row { display: flex; gap: 30px; flex-wrap: wrap; }
+  .meta-item { flex: 1; min-width: 200px; }
+  .meta-label { font-size: 0.85rem; color: #666; margin-bottom: 5px; }
+  .meta-value { font-weight: bold; font-size: 1.1rem; }
+  .log { border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 20px; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+  .log-head { display: flex; justify-content: space-between; align-items: center; background: #fafafa; padding: 10px; margin: -10px -10px 15px -10px; border-radius: 8px 8px 0 0; }
+  .log-date { font-weight: bold; font-size: 1rem; color: #555; }
+  .badge { background: #e53935; color: white; padding: 4px 10px; border-radius: 16px; font-weight: bold; font-size: 0.9rem; }
+  .log-section { margin-bottom: 12px; }
+  .log-label { font-size: 0.85rem; color: #666; margin-bottom: 4px; }
+  .log-value { font-size: 1rem; line-height: 1.6; white-space: pre-wrap; }
+  .snapshot { background: #f9f9f9; padding: 15px; margin-top: 15px; border-radius: 6px; border-left: 4px solid #4caf50; }
+  .snapshot-title { font-weight: bold; color: #4caf50; margin-bottom: 8px; font-size: 0.9rem; }
+  .snapshot-item { margin-bottom: 8px; font-size: 0.9rem; }
+  .photos { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+  .photos img { width: 150px; height: 150px; object-fit: cover; border-radius: 6px; border: 2px solid var(--border); cursor: zoom-in; transition: 0.2s; }
+  .photos img:hover { border-color: var(--primary); transform: scale(1.05); }
+  .trigger-tag { display: inline-block; background: #fff3e0; color: #e65100; padding: 3px 8px; border-radius: 4px; font-size: 0.85rem; margin-right: 5px; }
+  @media print { body { background: white; } .log { page-break-inside: avoid; } }
+</style>
+</head>
+<body>
+  <h1>🏥 アレルギー症状記録レポート</h1>
+  <div class="meta">
+    <div class="meta-row">
+      <div class="meta-item">
+        <div class="meta-label">患者氏名</div>
+        <div class="meta-value">${patientName}</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">カルテID</div>
+        <div class="meta-value">${chartId}</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">対象期間</div>
+        <div class="meta-value">${year}年${month + 1}月</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">作成日時</div>
+        <div class="meta-value">${new Date().toLocaleString('ja-JP')}</div>
+      </div>
+    </div>
+  </div>
+
+  ${payload.items.map(item => {
+    const date = new Date(item.id);
+    const triggersHtml = (item.triggers || []).map(t =>
+      `<span class="trigger-tag">${triggerLabels[t] || t}</span>`
+    ).join('');
+
+    let snapshotHtml = '';
+    if (item.snapshot) {
+      const mealsHtml = (item.snapshot.meals || []).map(m =>
+        `<div class="snapshot-item">🍽️ ${m.tags.join(', ')}</div>`
+      ).join('');
+      const medsHtml = (item.snapshot.meds || []).map(m =>
+        `<div class="snapshot-item">💊 ${m.items.map(i => `${i.name}(${i.count})`).join(', ')}</div>`
+      ).join('');
+
+      if (mealsHtml || medsHtml) {
+        snapshotHtml = `<div class="snapshot">
+          <div class="snapshot-title">📎 症状発生前の記録（自動スナップショット）</div>
+          ${mealsHtml}
+          ${medsHtml}
+        </div>`;
+      }
+    }
+
+    return `<div class="log">
+      <div class="log-head">
+        <span class="log-date">${date.toLocaleString('ja-JP')}</span>
+        <span class="badge">重症度 Lv.${item.severity}</span>
+      </div>
+      <div class="log-section">
+        <div class="log-label">部位</div>
+        <div class="log-value">${item.parts || '-'}</div>
+      </div>
+      <div class="log-section">
+        <div class="log-label">誘因・状況</div>
+        <div class="log-value">${triggersHtml || '-'}</div>
+      </div>
+      <div class="log-section">
+        <div class="log-label">詳細メモ</div>
+        <div class="log-value">${item.note || '-'}</div>
+      </div>
+      ${snapshotHtml}
+      <div class="photos">
+        ${item.photos.map(p => `<img src="${p}" onclick="window.open(this.src)" alt="症状写真">`).join('')}
+      </div>
+    </div>`;
+  }).join('')}
+
+  <script id="raw-data" type="application/json">
+${JSON.stringify(payload, null, 2)}
+  <\/script>
+</body>
+</html>`;
+
+            // HTMLファイル生成
+            const fileName = `アレログ_${patientName}_${year}年${month + 1}月_${new Date().toISOString().slice(0, 10)}.html`;
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const file = new File([blob], fileName, { type: 'text/html' });
+
+            // Web Share API で共有、または ダウンロード
+            if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                // Web Share API対応（スマホ）
+                await navigator.share({
+                    title: 'アレルギー症状記録レポート',
+                    text: `${patientName}様（${year}年${month + 1}月分）`,
+                    files: [file]
+                });
+                alert('レポートを共有しました。\nPCでアレログ・マネージャーを開き、\n受け取ったHTMLファイルをドラッグ&ドロップしてください。');
             } else {
-                throw new Error('予期しない応答: ' + JSON.stringify(resJson));
+                // ダウンロード（PC）
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                alert('レポートをダウンロードしました。\nアレログ・マネージャーでファイルを開いて確認できます。');
             }
 
         } catch (e) {
             console.error(e);
-            alert('送信失敗: ' + e.message);
+            alert('レポート作成失敗: ' + e.message);
         } finally {
             document.getElementById('loading-overlay').classList.add('hidden');
         }
     },
-    // ▲▲ 修正ここまで ▲▲
+    // ▲▲ v2.0.0: HTML埋め込み型レポート生成機能 ここまで ▲▲
 
     isSameDay(d1, d2) {
         return d1.getFullYear()===d2.getFullYear() && d1.getMonth()===d2.getMonth() && d1.getDate()===d2.getDate();

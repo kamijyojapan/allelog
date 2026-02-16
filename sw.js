@@ -1,10 +1,11 @@
-const CACHE_NAME = 'allergy-log-v31';
+const CACHE_NAME = 'allergy-log-v32';
 const ASSETS = [
     '/allelog/',
     '/allelog/index.html',
     '/allelog/style.css',
     '/allelog/app.js',
     '/allelog/manifest.json',
+    '/allelog/manager.html',
     '/allelog/favicon.ico',
     '/allelog/icon-192.png',
     '/allelog/icon-512.png'

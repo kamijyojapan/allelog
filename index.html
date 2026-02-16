@@ -16,7 +16,7 @@
     <h1 onclick="app.goHome()">Allergy Log</h1>
     <div class="header-controls">
         <button id="btn-today">今日</button>
-        <button id="btn-send-data" class="hidden" title="データをサーバーへ送信">📤</button>
+        <button id="btn-send-data" class="hidden" title="レポートを作成して共有">📨</button>
         <button id="btn-doctor" style="font-size:1.2rem;" title="ドクターモード">🏥</button>
         <button id="btn-menu" title="メニュー">☰</button>
     </div>
@@ -193,7 +193,7 @@
 
             <hr style="border:none; border-top:1px solid #eee; margin: 15px 0;">
             <p style="font-size: 0.8rem; text-align: center; color: #888;">
-                Allergy Log (アレログ) v1.4.1
+                Allergy Log (アレログ) v2.0.0
             </p>
         </div>
     </div>
@@ -321,7 +321,7 @@
 
 <div id="loading-overlay" class="hidden" style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(255,255,255,0.9); z-index:9999; display:flex; flex-direction:column; justify-content:center; align-items:center;">
     <div class="spinner" style="width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #2196f3; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-    <p style="margin-top:20px; font-weight:bold; color:#555;">データを送信中...</p>
+    <p style="margin-top:20px; font-weight:bold; color:#555;">レポートを作成中...</p>
 </div>
 <style>
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
