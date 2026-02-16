@@ -660,6 +660,48 @@
         div.textContent = text;
         return div.innerHTML;
     }
+
+    // サーバーモード: 定期的にレポートを取得（サーバー起動時のみ）
+    async function fetchServerReports() {
+        try {
+            const response = await fetch('/reports');
+            if (!response.ok) return; // サーバー未起動時は何もしない
+
+            const data = await response.json();
+
+            if (data.reports && data.reports.length > 0) {
+                for (const serverReport of data.reports) {
+                    // HTMLパース
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(serverReport.content, 'text/html');
+                    const script = doc.getElementById('raw-data');
+
+                    if (script) {
+                        const json = JSON.parse(script.textContent);
+                        const key = `${json.chartId}_${json.year}_${json.month}`;
+
+                        const existingIndex = reports.findIndex(r =>
+                            `${r.chartId}_${r.year}_${r.month}` === key
+                        );
+
+                        if (existingIndex >= 0) {
+                            reports[existingIndex] = mergeReports(reports[existingIndex], json);
+                        } else {
+                            reports.push(json);
+                        }
+                    }
+                }
+                renderSidebar();
+            }
+        } catch (err) {
+            // サーバー未起動時は静かに失敗（エラーを表示しない）
+            console.debug('サーバーポーリング: ', err.message);
+        }
+    }
+
+    // 初回チェック＋5秒ごとにポーリング（サーバーモード時のみ）
+    fetchServerReports();
+    setInterval(fetchServerReports, 5000);
 </script>
 </body>
 </html>

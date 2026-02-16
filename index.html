@@ -16,6 +16,7 @@
     <h1 onclick="app.goHome()">Allergy Log</h1>
     <div class="header-controls">
         <button id="btn-today">今日</button>
+        <button id="btn-send-server" class="hidden" title="サーバーに直接送信">📡</button>
         <button id="btn-send-data" class="hidden" title="レポートを作成して共有">📨</button>
         <button id="btn-doctor" style="font-size:1.2rem;" title="ドクターモード">🏥</button>
         <button id="btn-menu" title="メニュー">☰</button>
@@ -127,6 +128,16 @@
                 <input type="text" id="setting-patient-name" placeholder="お名前">
             </div>
             <!-- ▲▲ 追加ここまで ▲▲ -->
+
+            <div style="padding: 10px; background:#f9f9f9; border-radius:8px; margin-bottom:15px; border:1px solid #eee;">
+                <label style="color:var(--primary); margin-bottom:10px;">📡 サーバー送信設定</label>
+
+                <label style="font-weight:normal; font-size:0.8rem; color:#666;">PCのIPアドレス</label>
+                <input type="text" id="setting-server-ip" placeholder="例: 192.168.1.100" style="margin-bottom:5px;">
+                <div style="font-size:0.75rem; color:#999; margin-bottom:8px;">
+                    ※PCでサーバー起動時に表示されるIPアドレスを入力
+                </div>
+            </div>
 
             <div style="padding: 10px; background:#f9f9f9; border-radius:8px; margin-bottom:15px; border:1px solid #eee;">
                 <label style="color:var(--primary); margin-bottom:10px;">📎 スナップショット設定</label>
