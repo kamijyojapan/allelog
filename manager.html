@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>アレログ・マネージャー</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
         :root {
             --primary: #2196f3;
@@ -90,6 +91,56 @@
             box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
         }
 
+        /* 期間フィルター */
+        .date-filter-container {
+            padding: 15px;
+            border-bottom: 1px solid var(--border);
+            background: #f9f9f9;
+        }
+        .filter-label {
+            font-size: 0.85rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #666;
+        }
+        .date-inputs {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .date-input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+        .btn-filter, .btn-clear-filter {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            font-size: 0.85rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-filter {
+            background: var(--primary);
+            color: white;
+        }
+        .btn-filter:hover {
+            background: #1976d2;
+        }
+        .btn-clear-filter {
+            background: #f5f5f5;
+            color: #666;
+        }
+        .btn-clear-filter:hover {
+            background: #e0e0e0;
+        }
+
         /* 患者リスト */
         .patient-list {
             flex: 1;
@@ -137,6 +188,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 15px;
         }
         .current-view-title {
             margin: 0;
@@ -146,6 +198,33 @@
         .toolbar-actions {
             display: flex;
             gap: 10px;
+        }
+
+        /* タブ */
+        .view-tabs {
+            display: flex;
+            gap: 10px;
+        }
+        .tab-btn {
+            padding: 10px 16px;
+            border: none;
+            background: #f5f5f5;
+            border-radius: 6px 6px 0 0;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: 0.2s;
+            font-family: inherit;
+        }
+        .tab-btn.active {
+            background: white;
+            font-weight: bold;
+            border-bottom: 2px solid var(--primary);
+        }
+        .tab-btn:hover {
+            background: #e8e8e8;
+        }
+        .tab-btn.active:hover {
+            background: white;
         }
 
         /* ボタン */
@@ -297,6 +376,28 @@
             color: #666;
         }
 
+        /* 統計グラフ */
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            padding: 20px;
+        }
+        .chart-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .chart-card h3 {
+            margin: 0 0 15px 0;
+            font-size: 1rem;
+            color: #555;
+        }
+        .chart-card canvas {
+            height: 300px !important;
+        }
+
         /* スクロールバーのスタイル */
         ::-webkit-scrollbar {
             width: 8px;
@@ -310,6 +411,111 @@
         }
         ::-webkit-scrollbar-thumb:hover {
             background: #999;
+        }
+
+        /* ハンバーガーメニュー */
+        .menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 8px;
+            color: var(--text);
+        }
+
+        /* サイドバー背景 */
+        .sidebar-backdrop {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+        .sidebar-backdrop.open {
+            display: block;
+        }
+
+        /* タッチターゲット最適化 */
+        .btn {
+            padding: 12px 20px;
+            min-height: 44px;
+        }
+        .patient-item {
+            padding: 18px 20px;
+            min-height: 60px;
+        }
+        .search-box {
+            padding: 12px;
+            min-height: 44px;
+        }
+
+        /* タブレット境界: 768px */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: -250px;
+                width: 250px;
+                z-index: 1000;
+                transition: left 0.3s ease;
+            }
+            .sidebar.open {
+                left: 0;
+            }
+
+            .menu-toggle {
+                display: block;
+            }
+
+            .file-drop-area {
+                border: 2px solid var(--primary);
+                background: #e3f2fd;
+                padding: 40px 20px;
+            }
+            .file-drop-area::after {
+                content: '📱 タップしてファイルを選択';
+                display: block;
+                font-size: 1.1rem;
+                font-weight: bold;
+                margin-top: 10px;
+            }
+
+            .stats-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* スマホ最適化: 480px */
+        @media (max-width: 480px) {
+            .toolbar {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+            .toolbar-actions {
+                width: 100%;
+                justify-content: space-between;
+            }
+            .btn {
+                font-size: 0.85rem;
+                padding: 10px 14px;
+            }
+            .current-view-title {
+                font-size: 1.1rem;
+            }
+
+            .view-tabs {
+                flex-direction: column;
+                gap: 5px;
+                width: 100%;
+            }
+            .tab-btn {
+                width: 100%;
+                border-radius: 6px;
+            }
         }
     </style>
 </head>
@@ -327,12 +533,29 @@
     <div class="search-box-container">
         <input type="text" id="search-box" class="search-box" placeholder="🔍 患者名やカルテIDで検索">
     </div>
+    <div class="date-filter-container">
+        <div class="filter-label">📅 期間絞り込み</div>
+        <div class="date-inputs">
+            <input type="date" id="filter-start" class="date-input">
+            <span>〜</span>
+            <input type="date" id="filter-end" class="date-input">
+        </div>
+        <button id="apply-filter" class="btn-filter">適用</button>
+        <button id="clear-filter" class="btn-clear-filter">クリア</button>
+    </div>
     <ul class="patient-list" id="patient-list"></ul>
 </div>
 
+<div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
 <div class="main">
     <div class="toolbar">
-        <h2 id="current-view-title" class="current-view-title">レポート詳細</h2>
+        <button class="menu-toggle" id="menu-toggle">☰</button>
+        <div class="view-tabs">
+            <button class="tab-btn active" data-view="detail">📋 詳細表示</button>
+            <button class="tab-btn" data-view="stats">📊 統計グラフ</button>
+        </div>
+        <h2 id="current-view-title" class="current-view-title" style="flex:1;">レポート詳細</h2>
         <div class="toolbar-actions">
             <button class="btn btn-outline" onclick="clearAll()">🗑️ クリア</button>
             <button class="btn btn-primary" onclick="downloadCSV()">📥 CSV出力</button>
@@ -350,6 +573,13 @@
     // グローバル変数
     let reports = [];
     let currentReport = null;
+    let dateFilter = {
+        enabled: false,
+        start: null,
+        end: null
+    };
+    let charts = {};
+    let currentView = 'detail';
 
     // 誘因ラベルマッピング（app.jsと同じ）
     const TRIGGER_LABELS = {
@@ -367,6 +597,20 @@
     const fileCount = document.getElementById('file-count');
     const contentArea = document.getElementById('content-area');
     const currentViewTitle = document.getElementById('current-view-title');
+    const menuToggle = document.getElementById('menu-toggle');
+    const sidebar = document.querySelector('.sidebar');
+    const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+
+    // ハンバーガーメニュー処理
+    menuToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('open');
+        sidebarBackdrop.classList.toggle('open');
+    });
+
+    sidebarBackdrop.addEventListener('click', () => {
+        sidebar.classList.remove('open');
+        sidebarBackdrop.classList.remove('open');
+    });
 
     // イベントリスナー設定
     dropZone.onclick = () => fileInput.click();
@@ -389,6 +633,41 @@
 
     fileInput.onchange = (e) => handleFiles(e.target.files);
     searchBox.oninput = renderSidebar;
+
+    // 期間フィルター処理
+    document.getElementById('apply-filter').addEventListener('click', () => {
+        const start = document.getElementById('filter-start').value;
+        const end = document.getElementById('filter-end').value;
+
+        if (!start || !end) {
+            alert('開始日と終了日の両方を選択してください');
+            return;
+        }
+
+        dateFilter.enabled = true;
+        dateFilter.start = new Date(start);
+        dateFilter.end = new Date(end);
+        dateFilter.end.setHours(23, 59, 59, 999);
+
+        renderSidebar();
+        if (currentReport) {
+            const li = document.querySelector('.patient-item.active');
+            showDetail(currentReport, li);
+        }
+    });
+
+    document.getElementById('clear-filter').addEventListener('click', () => {
+        dateFilter.enabled = false;
+        dateFilter.start = null;
+        dateFilter.end = null;
+        document.getElementById('filter-start').value = '';
+        document.getElementById('filter-end').value = '';
+        renderSidebar();
+        if (currentReport) {
+            const li = document.querySelector('.patient-item.active');
+            showDetail(currentReport, li);
+        }
+    });
 
     // ファイル処理（データマージロジック：最新優先＋欠損補完）
     async function handleFiles(files) {
@@ -507,11 +786,31 @@
         if (liElement) liElement.classList.add('active');
 
         // タイトル更新
-        currentViewTitle.textContent = `${report.patientName} 様（${report.year}年${report.month}月）`;
+        let titleText = `${report.patientName} 様（${report.year}年${report.month}月）`;
+        if (dateFilter.enabled) {
+            const startStr = dateFilter.start.toLocaleDateString('ja-JP');
+            const endStr = dateFilter.end.toLocaleDateString('ja-JP');
+            titleText += ` [${startStr} 〜 ${endStr}]`;
+        }
+        currentViewTitle.textContent = titleText;
+
+        // アイテムをフィルタリング
+        let items = report.items;
+        if (dateFilter.enabled) {
+            items = items.filter(item => {
+                const itemDate = new Date(item.id);
+                return itemDate >= dateFilter.start && itemDate <= dateFilter.end;
+            });
+        }
+
+        if (items.length === 0) {
+            contentArea.innerHTML = '<div class="empty-state"><h3>該当する記録がありません</h3></div>';
+            return;
+        }
 
         // レポート生成
         let html = '';
-        report.items.forEach(item => {
+        items.forEach(item => {
             const date = new Date(item.id);
 
             // 誘因タグ
@@ -654,12 +953,131 @@
         }
     }
 
+    // データ集計
+    function generateStats(report) {
+        let items = report.items;
+        if (dateFilter.enabled) {
+            items = items.filter(item => {
+                const itemDate = new Date(item.id);
+                return itemDate >= dateFilter.start && itemDate <= dateFilter.end;
+            });
+        }
+
+        // 1. 日別の症状頻度
+        const dailyFrequency = {};
+        items.forEach(item => {
+            const date = new Date(item.id).toLocaleDateString('ja-JP');
+            dailyFrequency[date] = (dailyFrequency[date] || 0) + 1;
+        });
+
+        // 2. 重症度の推移
+        const severityData = items.map(item => ({
+            date: new Date(item.id).toLocaleDateString('ja-JP'),
+            severity: item.severity
+        })).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        // 3. トリガーの集計
+        const triggerCounts = { exercise: 0, stress: 0, sleep_lack: 0, illness: 0 };
+        items.forEach(item => {
+            (item.triggers || []).forEach(t => {
+                if (triggerCounts[t] !== undefined) triggerCounts[t]++;
+            });
+        });
+
+        // 4. 部位別発生回数
+        const partsCounts = {};
+        items.forEach(item => {
+            if (item.parts) {
+                partsCounts[item.parts] = (partsCounts[item.parts] || 0) + 1;
+            }
+        });
+
+        return { dailyFrequency, severityData, triggerCounts, partsCounts };
+    }
+
+    // 統計グラフ表示
+    function showStats(report) {
+        Object.values(charts).forEach(chart => chart.destroy());
+        charts = {};
+
+        const stats = generateStats(report);
+
+        contentArea.innerHTML = `
+            <div class="stats-container">
+                <div class="chart-card"><h3>📊 症状の頻度</h3><canvas id="chart-frequency"></canvas></div>
+                <div class="chart-card"><h3>📈 重症度の推移</h3><canvas id="chart-severity"></canvas></div>
+                <div class="chart-card"><h3>🎯 誘因・状況の内訳</h3><canvas id="chart-triggers"></canvas></div>
+                <div class="chart-card"><h3>📍 部位別発生回数</h3><canvas id="chart-parts"></canvas></div>
+            </div>
+        `;
+
+        // 症状の頻度（棒グラフ）
+        charts.frequency = new Chart(document.getElementById('chart-frequency'), {
+            type: 'bar',
+            data: {
+                labels: Object.keys(stats.dailyFrequency),
+                datasets: [{ label: '発生回数', data: Object.values(stats.dailyFrequency), backgroundColor: '#2196f3' }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+
+        // 重症度の推移（折れ線グラフ）
+        charts.severity = new Chart(document.getElementById('chart-severity'), {
+            type: 'line',
+            data: {
+                labels: stats.severityData.map(d => d.date),
+                datasets: [{ label: '重症度', data: stats.severityData.map(d => d.severity), borderColor: '#e53935', backgroundColor: 'rgba(229, 57, 53, 0.1)', tension: 0.3 }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 5, ticks: { stepSize: 1 } } } }
+        });
+
+        // トリガーの集計（円グラフ）
+        const TRIGGER_LABELS_JP = { exercise: '運動', stress: 'ストレス', sleep_lack: '睡眠不足', illness: '体調不良' };
+        charts.triggers = new Chart(document.getElementById('chart-triggers'), {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(stats.triggerCounts).map(k => TRIGGER_LABELS_JP[k]),
+                datasets: [{ data: Object.values(stats.triggerCounts), backgroundColor: ['#ff9800', '#9c27b0', '#3f51b5', '#4caf50'] }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        // 部位別発生回数（横棒グラフ）
+        charts.parts = new Chart(document.getElementById('chart-parts'), {
+            type: 'bar',
+            data: {
+                labels: Object.keys(stats.partsCounts),
+                datasets: [{ label: '発生回数', data: Object.values(stats.partsCounts), backgroundColor: '#4caf50' }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } } }
+        });
+    }
+
     // HTMLエスケープ
     function escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     }
+
+    // タブ切り替え
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const view = e.target.dataset.view;
+            currentView = view;
+
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+
+            if (currentReport) {
+                if (view === 'detail') {
+                    showDetail(currentReport, document.querySelector('.patient-item.active'));
+                } else if (view === 'stats') {
+                    showStats(currentReport);
+                }
+            }
+        });
+    });
 
 </script>
 </body>
